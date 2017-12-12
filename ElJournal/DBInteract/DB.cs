@@ -5,12 +5,13 @@ using System.Web;
 using System.Configuration;
 using System.Data.SqlClient;
 using System.Data;
+using System.Threading.Tasks;
 
 namespace ElJournal.DBInteract
 {
     public sealed class DB : IDisposable
     {
-        private static string connectionString = ConfigurationManager.ConnectionStrings["dbMain"].ConnectionString;
+        private static string connectionString = ConfigurationManager.ConnectionStrings["dbMainConnection"].ConnectionString;
         private static DB db;
         private static object locker;
 
@@ -19,10 +20,10 @@ namespace ElJournal.DBInteract
         private DB()
         {
             conn = new SqlConnection(connectionString);
-            conn.Open();
+            //conn.Open();
         }
 
-        public static DB getInstance()
+        public static DB GetInstance()
         {
             if (db == null)
                 db = new DB();
@@ -36,50 +37,110 @@ namespace ElJournal.DBInteract
         }
 
 
-        public List<Dictionary<string,dynamic>> ExecSelectQuery(string sqlQuery)
+        public Task<List<Dictionary<string, dynamic>>> ExecSelectQuery(string sqlQuery)
         {
             if (sqlQuery.Contains("insert") || sqlQuery.Contains("delete"))
                 throw new FormatException("Incorrect sql query for this method");
 
-            SqlCommand query = new SqlCommand(sqlQuery, conn);
-            SqlDataReader result = query.ExecuteReader();
-
-            List<Dictionary<string, dynamic>> set = new List<Dictionary<string, dynamic>>();
-            while (result.Read())
+            return Task.Run(async () =>
             {
-                Dictionary<string, dynamic> row = new Dictionary<string, dynamic>(result.FieldCount);
-                for(int i=0; i<result.FieldCount; i++)
-                {
-                    row.Add(result.GetName(i), result.GetFieldValue<dynamic>(i));
-                }
-                set.Add(row);
-            }
+                await conn.OpenAsync();
+                SqlCommand query = new SqlCommand(sqlQuery, conn);
+                SqlDataReader result = await query.ExecuteReaderAsync();
 
-            return set;
+                List<Dictionary<string, dynamic>> set = new List<Dictionary<string, dynamic>>();
+                while (result.Read())
+                {
+                    Dictionary<string, dynamic> row = new Dictionary<string, dynamic>(result.FieldCount);
+                    for (int i = 0; i < result.FieldCount; i++)
+                    {
+                        row.Add(result.GetName(i), result.GetFieldValue<dynamic>(i));
+                    }
+                    set.Add(row);
+                }
+
+                conn.Close();
+                return set;
+            });
         }
-        public dynamic ExecuteScalarQuery(string sqlQuery)
+        public Task<List<Dictionary<string, dynamic>>> ExecSelectQuery(string sqlQuery, Dictionary<string, string> parameters)
         {
             if (sqlQuery.Contains("insert") || sqlQuery.Contains("delete"))
                 throw new FormatException("Incorrect sql query for this method");
 
-            SqlCommand query = new SqlCommand(sqlQuery, conn);
-            dynamic result = query.ExecuteScalar();
+            return Task.Run(async () =>
+            {
+                await conn.OpenAsync();
+                SqlCommand query = new SqlCommand(sqlQuery, conn);
+                foreach (var obj in parameters)
+                    query.Parameters.Add(new SqlParameter(obj.Key, obj.Value));
+                SqlDataReader result = await query.ExecuteReaderAsync();
 
-            return result;
+                List<Dictionary<string, dynamic>> set = new List<Dictionary<string, dynamic>>();
+                while (result.Read())
+                {
+                    Dictionary<string, dynamic> row = new Dictionary<string, dynamic>(result.FieldCount);
+                    for (int i = 0; i < result.FieldCount; i++)
+                    {
+                        row.Add(result.GetName(i), result.GetFieldValue<dynamic>(i));
+                    }
+                    set.Add(row);
+                }
+
+                conn.Close();
+                return set;
+            });
+        }
+        public Task<dynamic> ExecuteScalarQuery(string sqlQuery)
+        {
+            if (sqlQuery.Contains("insert") || sqlQuery.Contains("delete"))
+                throw new FormatException("Incorrect sql query for this method");
+
+            return Task.Run(async () =>
+            {
+                await conn.OpenAsync();
+                SqlCommand query = new SqlCommand(sqlQuery, conn);
+                dynamic result = await query.ExecuteScalarAsync();
+
+                conn.Close();
+                return result;
+            });
+        }
+        public Task<dynamic> ExecuteScalarQuery(string sqlQuery, Dictionary<string,string> parameters)
+        {
+            if (sqlQuery.Contains("insert") || sqlQuery.Contains("delete"))
+                throw new FormatException("Incorrect sql query for this method");
+
+            return Task.Run(async () =>
+            {
+                await conn.OpenAsync();
+                SqlCommand query = new SqlCommand(sqlQuery, conn);
+                foreach (var obj in parameters)
+                    query.Parameters.Add(new SqlParameter(obj.Key, obj.Value));
+                dynamic result = await query.ExecuteScalarAsync();
+
+                conn.Close();
+                return result;
+            });
         }
         public int ExecStoredProcedure(string procedureName, Dictionary<string,string> parameters)
         {
-            SqlCommand query = new SqlCommand(procedureName, conn);
-            query.CommandType = System.Data.CommandType.StoredProcedure;
+            lock (locker)
+            {
+                conn.Open();
+                SqlCommand query = new SqlCommand(procedureName, conn);
+                query.CommandType = System.Data.CommandType.StoredProcedure;
 
-            foreach(var obj in parameters)
-                query.Parameters.Add(new SqlParameter(obj.Key, obj.Value));
-            var returnParam = query.Parameters.Add("@ReturnVal", SqlDbType.Int);
-            returnParam.Direction = ParameterDirection.ReturnValue;
+                foreach (var obj in parameters)
+                    query.Parameters.Add(new SqlParameter(obj.Key, obj.Value));
+                var returnParam = query.Parameters.Add("@ReturnVal", SqlDbType.Int);
+                returnParam.Direction = ParameterDirection.ReturnValue;
 
-            query.ExecuteNonQuery();
-            int answer = (int)returnParam.Value;
-            return answer;
+                query.ExecuteNonQueryAsync();
+                int answer = (int)returnParam.Value;
+                conn.Close();
+                return answer;
+            }
         }
         public int ExecInsOrDelQuery(string sqlQuery)
         {

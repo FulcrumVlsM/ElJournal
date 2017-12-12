@@ -4,21 +4,29 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Web.Http;
+using ElJournal.DBInteract;
+using System.Threading.Tasks;
 
 namespace ElJournal.Controllers
 {
     public class FacultiesController : ApiController
     {
         // GET: api/Faculties
-        public IEnumerable<string> Get()
+        // полный список всех факультетов
+        public async Task<dynamic> Get()
         {
-            return new string[] { "value1", "value2" };
+            DB db = DB.GetInstance();
+            return db.ExecSelectQuery("select * from Faculties");
         }
 
-        // GET: api/Faculties/5
-        public string Get(int id)
+        // GET: api/Faculties/guid
+        // возвращает данные по конкретному факультету
+        public dynamic Get(string id)
         {
-            return "value";
+            DB db = DB.GetInstance();
+            Dictionary<string, string> parameters = new Dictionary<string, string>();
+            parameters.Add("@id", id);
+            return db.ExecSelectQuery("select * from Faculties where ID=@id", parameters);
         }
 
         // POST: api/Faculties
