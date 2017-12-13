@@ -32,7 +32,6 @@ namespace ElJournal.DBInteract
 
         public void Dispose()
         {
-            conn.Close();
             conn.Dispose();
         }
 

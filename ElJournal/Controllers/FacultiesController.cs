@@ -16,32 +16,40 @@ namespace ElJournal.Controllers
         public async Task<dynamic> Get()
         {
             DB db = DB.GetInstance();
-            return db.ExecSelectQuery("select * from Faculties");
+            return await db.ExecSelectQuery("select * from Faculties");
         }
 
         // GET: api/Faculties/guid
         // возвращает данные по конкретному факультету
-        public dynamic Get(string id)
+        public async Task<dynamic> Get(string id)
         {
             DB db = DB.GetInstance();
             Dictionary<string, string> parameters = new Dictionary<string, string>();
             parameters.Add("@id", id);
-            return db.ExecSelectQuery("select * from Faculties where ID=@id", parameters);
+            return await db.ExecSelectQuery("select * from Faculties where ID=@id", parameters);
         }
+        
 
         // POST: api/Faculties
-        public void Post([FromBody]string value)
+        public async Task<dynamic> Post([FromBody]string authorId,
+                                        [FromBody]string name,
+                                        [FromBody]string dekanId,
+                                        [FromBody]string description)
         {
+            return null;
         }
 
         // PUT: api/Faculties/5
-        public void Put(int id, [FromBody]string value)
+        public async Task<dynamic> Put(string id, [FromBody]string authorId, [FromBody]string name,
+                                   [FromBody]string dekanId, [FromBody]string description)
         {
+            return null;
         }
 
         // DELETE: api/Faculties/5
-        public void Delete(int id)
+        public async Task<dynamic> Delete(string id, [FromBody]string authorId)
         {
+            return null;
         }
     }
 }
