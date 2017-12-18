@@ -154,5 +154,20 @@ namespace ElJournal.DBInteract
                 return result;
             }
         }
+        public int ExecInsOrDelQuery(string sqlQuery, Dictionary<string,string> parameters)
+        {
+            if (sqlQuery.Contains("select"))
+                throw new FormatException("Incorrect sql query for this method");
+
+            lock (locker)
+            {
+                SqlCommand query = new SqlCommand(sqlQuery, conn);
+                foreach (var obj in parameters)
+                    query.Parameters.Add(new SqlParameter(obj.Key, obj.Value));
+                int result = query.ExecuteNonQuery();
+
+                return result;
+            }
+        }
     }
 }
