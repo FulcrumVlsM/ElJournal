@@ -4,15 +4,19 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Web.Http;
+using ElJournal.DBInteract;
+using System.Threading.Tasks;
 
 namespace ElJournal.Controllers
 {
     public class AlertsController : ApiController
     {
         // GET: api/Alerts
-        public IEnumerable<string> Get()
+        public async Task<dynamic> Get()
         {
-            return new string[] { "value1", "value2" };
+            DB db = DB.GetInstance();
+            return await db.ExecSelectQuery("select * from Events");
+
         }
 
         // GET: api/Alerts/5
