@@ -12,4 +12,10 @@ namespace ElJournal.Models
         public string message { get; set; }
         public dynamic Data { get; set; }
     }
+
+    public static class ErrorMessage
+    {
+        public const string PERMISSION_ERROR = "You don't have permission for this operation";
+        public const string INCORRECT_REQUEST_DATA = "Incorrect request data";
+    }
 }
