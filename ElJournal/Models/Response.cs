@@ -7,10 +7,10 @@ namespace ElJournal.Models
 {
     public class Response
     {
-        public bool Succesful { get; set; }
-        public string Error { get; set; }
-        public string message { get; set; }
-        public dynamic Data { get; set; }
+        public bool Succesful { get; set; } = default(bool);
+        public string Error { get; set; } = null;
+        public string message { get; set; } = null;
+        public dynamic Data { get; set; } = null;
     }
 
     public static class ErrorMessage
