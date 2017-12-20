@@ -169,5 +169,16 @@ namespace ElJournal.DBInteract
                 return result;
             }
         }
+
+        public async Task<bool> CheckPermission(string personId,string permission)
+        {
+            string sqlQuery = "dbo.CheckRight(@personID,@permission)";
+            Dictionary<string, string> parameters = new Dictionary<string, string>();
+            parameters.Add("@personID", personId);
+            parameters.Add("@permission", permission);
+            if (!string.IsNullOrWhiteSpace(personId))
+                return await ExecuteScalarQuery(sqlQuery, parameters);
+            else return false;
+        }
     }
 }
