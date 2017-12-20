@@ -13,7 +13,7 @@ namespace ElJournal.DBInteract
     {
         private static string connectionString = ConfigurationManager.ConnectionStrings["dbMainConnection"].ConnectionString;
         private static DB db;
-        private static object locker;
+        private static object locker = new object();
 
         private SqlConnection conn;
 
@@ -116,7 +116,15 @@ namespace ElJournal.DBInteract
                 SqlCommand query = new SqlCommand(sqlQuery, conn);
                 foreach (var obj in parameters)
                     query.Parameters.Add(new SqlParameter(obj.Key, obj.Value));
-                dynamic result = await query.ExecuteScalarAsync();
+                dynamic result = default(dynamic);
+                try
+                {
+                    result = await query.ExecuteScalarAsync();
+                }
+                catch(SqlException e)
+                {
+                    result = null;
+                }
 
                 conn.Close();
                 return result;
@@ -135,7 +143,7 @@ namespace ElJournal.DBInteract
                 var returnParam = query.Parameters.Add("@ReturnVal", SqlDbType.Int);
                 returnParam.Direction = ParameterDirection.ReturnValue;
 
-                query.ExecuteNonQueryAsync();
+                query.ExecuteNonQuery();
                 int answer = (int)returnParam.Value;
                 conn.Close();
                 return answer;
@@ -148,8 +156,10 @@ namespace ElJournal.DBInteract
 
             lock (locker)
             {
+                conn.Open();
                 SqlCommand query = new SqlCommand(sqlQuery, conn);
                 int result = query.ExecuteNonQuery();
+                conn.Close();
 
                 return result;
             }
@@ -161,13 +171,26 @@ namespace ElJournal.DBInteract
 
             lock (locker)
             {
+                conn.Open();
                 SqlCommand query = new SqlCommand(sqlQuery, conn);
                 foreach (var obj in parameters)
                     query.Parameters.Add(new SqlParameter(obj.Key, obj.Value));
                 int result = query.ExecuteNonQuery();
+                conn.Close();
 
                 return result;
             }
+        }
+
+        public async Task<bool> CheckPermission(string personId,string permission)
+        {
+            string sqlQuery = "select dbo.CheckRight(@personID, @permission)";
+            Dictionary<string, string> parameters = new Dictionary<string, string>();
+            parameters.Add("@personID", personId);
+            parameters.Add("@permission", permission);
+            if (!string.IsNullOrWhiteSpace(personId))
+                return await ExecuteScalarQuery(sqlQuery, parameters);
+            else return false;
         }
     }
 }
