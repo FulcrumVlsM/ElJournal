@@ -15,7 +15,6 @@ namespace ElJournal.Controllers
     public class FacultiesController : ApiController
     {
         // GET: api/Faculties
-        // полный список всех факультетов
         public async Task<dynamic> Get()
         {
             //формат ответа
@@ -36,7 +35,6 @@ namespace ElJournal.Controllers
         }
 
         // GET: api/Faculties/guid
-        // возвращает данные по конкретному факультету
         public async Task<dynamic> Get(string id)
         {
             Response response = new Response();
@@ -64,7 +62,7 @@ namespace ElJournal.Controllers
         {   
             Response response = new Response(); //формат ответа
             string sqlQuery = "insert into Faculties(dekanPersonID,name,description) " +
-                        "values(@dekanPersonID,@name,@description";
+                        "values(@dekanPersonID,@name,@description)";
 
             try
             {
@@ -101,7 +99,7 @@ namespace ElJournal.Controllers
             return response;
         }
 
-        // PUT: api/Faculties/5
+        // PUT: api/Faculties/guid
         public async Task<dynamic> Put(string id, [FromBody]Faculty faculty)
         {
             Response response = new Response(); //формат результата запроса
@@ -137,7 +135,7 @@ namespace ElJournal.Controllers
             return response;
         }
 
-        // DELETE: api/Faculties/5
+        // DELETE: api/Faculties/guid
         public async Task<dynamic> Delete(string id, [FromBody]Faculty faculty)
         {
             Response response = new Response(); //формат ответа
@@ -146,9 +144,7 @@ namespace ElJournal.Controllers
             try
             {
                 DB db = DB.GetInstance();
-
                 bool right = await db.CheckPermission(faculty.authorId, "FACULTY_ALL_PERMISSION");
-
                 if (right)
                 {
                     Dictionary<string, string> parameters = new Dictionary<string, string>();
