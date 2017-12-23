@@ -12,4 +12,14 @@ namespace ElJournal.Models
         public string dekanId { get; set; }
         public string description { get; set; }
     }
+
+    public class Person
+    {
+        public string name { get; set; }
+        public string student_id { get; set; }
+        public string passport_id { get; set; }
+        public string avn_login { get; set; }
+        public string info { get; set; }
+        public string RolesId { get; set; }
+    }
 }
