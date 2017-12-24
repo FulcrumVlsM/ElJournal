@@ -16,10 +16,10 @@ namespace ElJournal.Models
     public class Person
     {
         public string name { get; set; }
-        public string student_id { get; set; }
-        public string passport_id { get; set; }
-        public string avn_login { get; set; }
-        public string info { get; set; }
+        public string student_id { get; set; } = default(string);
+        public string passport_id { get; set; } = default(string);
+        public string avn_login { get; set; } = default(string);
+        public string info { get; set; } = default(string);
         public string RolesId { get; set; }
     }
 }

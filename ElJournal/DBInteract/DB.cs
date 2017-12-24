@@ -132,6 +132,7 @@ namespace ElJournal.DBInteract
         }
         public int ExecStoredProcedure(string procedureName, Dictionary<string,string> parameters)
         {
+            //TODO: после появления исключения не закрывается подключение к бд. Исправить.
             lock (locker)
             {
                 conn.Open();

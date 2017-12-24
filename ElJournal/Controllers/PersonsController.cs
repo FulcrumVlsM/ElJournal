@@ -14,8 +14,8 @@ namespace ElJournal.Controllers
     public class PersonsController : ApiController
     {
         private const string PERSON_CRUD_PERMISSION = "PERSON_CRUD_PERMISSION";
-        private const string STUDENT_FACULTY_CRUD_PERMISSION = "STUDENT_FACULTY_CRUD_PERMISSION";
-        private const string TEACHER_DEPARTMENT_CRUD_PERMISSION = "TEACHER_DEPARTMENT_CRUD_PERMISSION";
+        //private const string STUDENT_FACULTY_CRUD_PERMISSION = "STUDENT_FACULTY_CRUD_PERMISSION";
+        //private const string TEACHER_DEPARTMENT_CRUD_PERMISSION = "TEACHER_DEPARTMENT_CRUD_PERMISSION";
 
         //история запросов: ip клиента - время последнего запроса
         private static Dictionary<string, DateTime> _clientsHistory = new Dictionary<string, DateTime>(30);
@@ -37,14 +37,17 @@ namespace ElJournal.Controllers
             try
             {
                 last = _clientsHistory[clientIP];
-                if (DateTime.Compare(last, DateTime.Now.AddMinutes(10)) > 0)//если не прошло время ожидания запроса
+                if (DateTime.Compare(last, DateTime.Now.AddMinutes(10)) < 0)//если не прошло время ожидания запроса
                 {
                     response.NextRequestTo = last.ToUniversalTime();
                     response.Error = ErrorMessage.WAIT_YOUR_TIME;
                     return response;
                 }
             }
-            catch (KeyNotFoundException) { }
+            catch (KeyNotFoundException)
+            {
+                _clientsHistory.Add(clientIP, DateTime.Now);
+            }
 
             try
             {
@@ -57,10 +60,10 @@ namespace ElJournal.Controllers
                     sqlQuery = sqlQueryOutAuth;
                 response.Data = await db.ExecSelectQuery(sqlQuery);
                 response.Succesful = true;
-                _clientsHistory.Add(clientIP, DateTime.Now);
+                _clientsHistory[clientIP] = DateTime.Now;
                 response.NextRequestTo = DateTime.UtcNow.AddMinutes(10);
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 response.Error = e.ToString();
                 response.message = e.Message;
@@ -91,10 +94,10 @@ namespace ElJournal.Controllers
                     sqlQuery = sqlQueryOutAuth;
 
                 parameters.Add("@id", id);
-                response.Data = await db.ExecSelectQuery(sqlQuery,parameters);
+                response.Data = await db.ExecSelectQuery(sqlQuery, parameters);
                 response.Succesful = true;
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 response.Error = e.ToString();
                 response.message = e.Message;
@@ -103,15 +106,22 @@ namespace ElJournal.Controllers
             return response;
         }
 
+        //TODO: метод еще пустой
+        //GET: api/Persons?name=...
+        public async Task<dynamic> Get([FromUri]string name)
+        {
+            return null;
+        }
+
         // POST: api/Persons
         //Authorization: personId
         public async Task<dynamic> Post([FromBody]Person person)
         {
+            //TODO: Исправить: для правильной работы обязательно необходимы все параметры
             Response response = new Response(); //формат ответа
             string authorId = Request.Headers.Authorization?.Scheme; //id пользователя из заголовка http
             Dictionary<string, string> parameters = new Dictionary<string, string>();
-            string sqlQuery = "insert into Persons(RolesID,name,student_id,passport_id,avn_login,info) " +
-                "values (@rolesId,@name,@student_id,@passport_id,@avn_login,@info)";
+            string sqlQuery = "dbo.AddPerson";
 
             try
             {
@@ -119,14 +129,14 @@ namespace ElJournal.Controllers
                 bool right = await db.CheckPermission(authorId, PERSON_CRUD_PERMISSION);
                 if (right)
                 {
-                    parameters.Add("@rolesId", person.RolesId);
+                    parameters.Add("@RolesID", person.RolesId);
                     parameters.Add("@name", person.name);
                     parameters.Add("@student_id", person.student_id);
                     parameters.Add("@passport_id", person.avn_login);
                     parameters.Add("@avn_login", person.avn_login);
                     parameters.Add("@info", person.info);
-                    int res = db.ExecInsOrDelQuery(sqlQuery, parameters);
-                    if (res != 0)
+                    int res = db.ExecStoredProcedure(sqlQuery, parameters);
+                    if (res == 0)
                     {
                         response.Succesful = true;
                         response.message = "Department was added";
@@ -208,10 +218,10 @@ namespace ElJournal.Controllers
                     if (res != 0)  //TODO: возможно лучше сделать условие res==1, чтобы гарантировать удаление одной записи
                     {
                         response.Succesful = true;
-                        response.message = "Department was delete";
+                        response.message = "Person was delete";
                     }
                     else
-                        response.message = "Department wasn't delete";
+                        response.message = "Person wasn't delete";
                 }
                 else
                     response.Error = ErrorMessage.PERMISSION_ERROR;
