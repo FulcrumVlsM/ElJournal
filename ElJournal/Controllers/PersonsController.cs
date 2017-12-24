@@ -13,6 +13,8 @@ namespace ElJournal.Controllers
 {
     public class PersonsController : ApiController
     {
+        //TODO: все же нужно создать в базе отдельное поле для токена пользователя
+        //      так как работать через id все же не камильфо
         private const string PERSON_CRUD_PERMISSION = "PERSON_CRUD_PERMISSION";
         //private const string STUDENT_FACULTY_CRUD_PERMISSION = "STUDENT_FACULTY_CRUD_PERMISSION";
         //private const string TEACHER_DEPARTMENT_CRUD_PERMISSION = "TEACHER_DEPARTMENT_CRUD_PERMISSION";

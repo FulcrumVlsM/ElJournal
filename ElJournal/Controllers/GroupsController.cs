@@ -3,22 +3,57 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Threading.Tasks;
 using System.Web.Http;
+using ElJournal.Models;
+using ElJournal.DBInteract;
 
 namespace ElJournal.Controllers
 {
     public class GroupsController : ApiController
     {
         // GET: api/Groups
-        public IEnumerable<string> Get()
+        public async Task<dynamic> Get()
         {
-            return new string[] { "value1", "value2" };
+            Response response = new Response();
+            string sqlQuery = "select * from Groups";
+
+            try
+            {
+                DB db = DB.GetInstance();
+                response.Data = await db.ExecSelectQuery(sqlQuery);
+                response.Succesful = true;
+            }
+            catch(Exception e)
+            {
+                response.Error = e.ToString();
+                response.message = e.Message;
+            }
+
+            return response;
         }
 
         // GET: api/Groups/5
-        public string Get(int id)
+        public async Task<dynamic> Get(string id)
         {
-            return "value";
+            Response response = new Response();
+            string sqlQuery = "select * from Groups where ID=@id";
+            Dictionary<string, string> parameters = new Dictionary<string, string>();
+
+            try
+            {
+                DB db = DB.GetInstance();
+                parameters.Add("@id", id);
+                response.Data = await db.ExecSelectQuery(sqlQuery, parameters);
+                response.Succesful = true;
+            }
+            catch(Exception e)
+            {
+                response.Error = e.ToString();
+                response.message = e.Message;
+            }
+
+            return response;
         }
 
         // POST: api/Groups
