@@ -3,9 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Threading.Tasks;
 using System.Web.Http;
 using ElJournal.DBInteract;
+using System.Threading.Tasks;
+using Newtonsoft.Json;
+using ElJournal.Models;
+using System.Data.SqlClient;
 
 namespace ElJournal.Controllers
 {
@@ -52,7 +55,7 @@ namespace ElJournal.Controllers
         }
 
         // POST: api/Departments
-        public async Task<dynamic> Post([FromBody]Departments department)
+        public async Task<dynamic> Post([FromBody]DepartmentModel department)
         {
             Response response = new Response(); //формат ответа
             string sqlQuery = "insert into Departments(managerPersonID,name,description) " +
@@ -94,7 +97,7 @@ namespace ElJournal.Controllers
         }
 
         // PUT: api/Departments/5
-        public void Put(int id, [FromBody]Departments department)
+        public async Task<dynamic> Put(string id, [FromBody]DepartmentModel department)
         {
             Response response = new Response(); //формат результата запроса
             string sqlQuery = "dbo.UpdateDepartment";
@@ -130,7 +133,7 @@ namespace ElJournal.Controllers
         }
 
         // DELETE: api/Departments/5
-        public void Delete(int id)
+        public async Task<dynamic> Delete(string id, [FromBody]DepartmentModel department)
         {
             Response response = new Response(); //формат ответа
             string sqlQuery = "delete from Departments where ID=@ID";
@@ -138,7 +141,7 @@ namespace ElJournal.Controllers
             try
             {
                 DB db = DB.GetInstance();
-                bool right = await db.CheckPermission(faculty.authorId, "DEPARTMENT_ALL_PERMISSION");
+                bool right = await db.CheckPermission(department.authorId, "DEPARTMENT_ALL_PERMISSION");
                 if (right)
                 {
                     Dictionary<string, string> parameters = new Dictionary<string, string>();
