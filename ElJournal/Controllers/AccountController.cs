@@ -14,6 +14,11 @@ namespace ElJournal.Controllers
 {
     public class AccountController : ApiController
     {
+        //TODO: нужно сделать следующие методы:
+        /*1. Get: логин и пароль получать через header
+          2. Post: создание нового аккаунта
+          3. Put: изменение пароля и логина*/
+        
         // GET: api/AccountW
         public async Task<dynamic> Get()
         {

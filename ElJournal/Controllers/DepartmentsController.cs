@@ -7,8 +7,8 @@ using System.Web.Http;
 using ElJournal.DBInteract;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
-using ElJournal.Models;
 using System.Data.SqlClient;
+using ElJournal.Models;
 
 namespace ElJournal.Controllers
 {
@@ -53,14 +53,13 @@ namespace ElJournal.Controllers
             }
             return response;
         }
-
         // POST: api/Departments
-        public async Task<dynamic> Post([FromBody]DepartmentModel department)
+        public async Task<dynamic> Post([FromBody]Department department)
         {
             Response response = new Response(); //формат ответа
             string sqlQuery = "insert into Departments(managerPersonID,name,description) " +
                         "values(@managerPersonID,@name,@description)";
-
+            
             try
             {
                 DB db = DB.GetInstance();
@@ -97,7 +96,7 @@ namespace ElJournal.Controllers
         }
 
         // PUT: api/Departments/5
-        public async Task<dynamic> Put(string id, [FromBody]DepartmentModel department)
+        public async Task<dynamic> Put(string id, [FromBody]Department department)
         {
             Response response = new Response(); //формат результата запроса
             string sqlQuery = "dbo.UpdateDepartment";
@@ -133,7 +132,7 @@ namespace ElJournal.Controllers
         }
 
         // DELETE: api/Departments/5
-        public async Task<dynamic> Delete(string id, [FromBody]DepartmentModel department)
+        public async Task<dynamic> Delete(string id, [FromBody]Department department)
         {
             Response response = new Response(); //формат ответа
             string sqlQuery = "delete from Departments where ID=@ID";

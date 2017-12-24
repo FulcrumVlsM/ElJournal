@@ -230,9 +230,8 @@
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
     <Compile Include="Models\AccountBindingModels.cs" />
-    <Compile Include="Models\AccountModels.cs" />
     <Compile Include="Models\AccountViewModels.cs" />
-    <Compile Include="Models\DepartmentModel.cs" />
+    <Compile Include="Models\DepartmentModels.cs" />
     <Compile Include="Models\IdentityModels.cs" />
     <Compile Include="Models\RequestModels.cs" />
     <Compile Include="Models\Response.cs" />
