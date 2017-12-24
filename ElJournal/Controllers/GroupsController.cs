@@ -52,7 +52,6 @@ namespace ElJournal.Controllers
                 response.Error = e.ToString();
                 response.message = e.Message;
             }
-
             return response;
         }
 

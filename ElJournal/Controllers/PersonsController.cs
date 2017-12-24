@@ -110,7 +110,7 @@ namespace ElJournal.Controllers
 
         //TODO: метод еще пустой
         //GET: api/Persons?name=...
-        public async Task<dynamic> Get([FromUri]string name)
+        public async Task<dynamic> Get([FromUri]string name,[FromUri]string faculty)
         {
             return null;
         }

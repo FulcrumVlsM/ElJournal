@@ -5,7 +5,7 @@ using System.Web;
 
 namespace ElJournal.Models
 {
-    public class DepartmentModel
+    public class Department
     {
         public string authorId { get; set; }
         public string name { get; set; }
