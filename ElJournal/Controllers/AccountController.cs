@@ -69,10 +69,7 @@ namespace ElJournal.Controllers
             try
             {
                 DB db = DB.GetInstance();
-                bool right = await db.CheckPermission(account.authorId, "ACCOUNT_ALL_PERMISSION");
-
-                if (right) //если у пользователя есть права на операцию
-                {
+                
                     //необходимые параметры запроса
                     Dictionary<string, string> parameters = new Dictionary<string, string>();
                     parameters.Add("@PersonID", account.PersonID);
@@ -89,9 +86,8 @@ namespace ElJournal.Controllers
                     }
                     else
                         response.message = "Account not added";
-                }
-                else
-                    response.Error = ErrorMessage.PERMISSION_ERROR;
+                
+                
             }
             catch (Exception e)
             {
