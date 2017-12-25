@@ -23,12 +23,12 @@ namespace ElJournal.Models
         public string RolesId { get; set; }
     }
 
-    public class Group
+    /*public class Group
     {
         public string ID { get; set; }
         public string FacultyId { get; set; }
         public string name { get; set; }
         public string info { get; set; }
         public string curatorPersonId { get; set; }
-    }
+    }*/
 }
