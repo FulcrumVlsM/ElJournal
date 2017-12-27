@@ -20,7 +20,7 @@ namespace ElJournal.DBInteract
         private DB()
         {
             conn = new SqlConnection(connectionString);
-            //conn.Open();
+            //TODO: add log
         }
 
         public static DB GetInstance()
@@ -33,6 +33,7 @@ namespace ElJournal.DBInteract
         public void Dispose()
         {
             conn.Dispose();
+            //TODO: add log
         }
 
 
@@ -43,6 +44,7 @@ namespace ElJournal.DBInteract
 
             return Task.Run(async () =>
             {
+                var conn = new SqlConnection(connectionString);
                 var set = new List<Dictionary<string, dynamic>>(); //результат
                 await conn.OpenAsync();
                 try
@@ -78,6 +80,7 @@ namespace ElJournal.DBInteract
 
             return Task.Run(async () =>
             {
+                var conn = new SqlConnection(connectionString);
                 var set = new List<Dictionary<string, dynamic>>(); //результат
                 await conn.OpenAsync();
                 try
@@ -115,13 +118,15 @@ namespace ElJournal.DBInteract
 
             return Task.Run(async () =>
             {
-                dynamic result = default(dynamic);
+                var conn = new SqlConnection(connectionString);//создание подключения
                 await conn.OpenAsync();
+
+                dynamic result = default(dynamic);
                 try
                 {
-                    SqlCommand query = new SqlCommand(sqlQuery, conn);
-                    result = await query.ExecuteScalarAsync();
-                    conn.Close();
+                    SqlCommand query = new SqlCommand(sqlQuery, conn);//формирование запроса
+                    result = await query.ExecuteScalarAsync();//выполнение запроса
+                    conn.Close();//закрытие подключения
                 }
                 catch(SqlException e)
                 {
@@ -140,14 +145,18 @@ namespace ElJournal.DBInteract
 
             return Task.Run(async () =>
             {
+                var conn = new SqlConnection(connectionString);//создание подключения
                 await conn.OpenAsync();
-                SqlCommand query = new SqlCommand(sqlQuery, conn);
-                foreach (var obj in parameters)
+
+                SqlCommand query = new SqlCommand(sqlQuery, conn); //формирование запроса
+
+                foreach (var obj in parameters)//добавление параметров к запросу
                     query.Parameters.Add(new SqlParameter(obj.Key, obj.Value));
+
                 dynamic result = default(dynamic);
                 try
                 {
-                    result = await query.ExecuteScalarAsync();
+                    result = await query.ExecuteScalarAsync();//выполнение запроса
                 }
                 catch(SqlException e)
                 {
@@ -156,7 +165,7 @@ namespace ElJournal.DBInteract
                     throw e;
                 }
 
-                conn.Close();
+                conn.Close();//закрытие подклчения
                 return result;
             });
         }
@@ -249,9 +258,9 @@ namespace ElJournal.DBInteract
 
         public async Task<bool> CheckPermission(string personId,string permission)
         {
-            string sqlQuery = "select dbo.CheckRight(@personID, @permission)";
+            string sqlQuery = "select dbo.CheckRight(@token, @permission)";
             Dictionary<string, string> parameters = new Dictionary<string, string>();
-            parameters.Add("@personID", personId);
+            parameters.Add("@token", personId);
             parameters.Add("@permission", permission);
             if (!string.IsNullOrWhiteSpace(personId))
                 return await ExecuteScalarQuery(sqlQuery, parameters);
