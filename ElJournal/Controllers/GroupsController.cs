@@ -35,6 +35,9 @@ namespace ElJournal.Controllers
             return response;
         }
 
+            return response;
+        }
+
         // GET: api/Groups/5
         public async Task<dynamic> Get(string id)
         {
@@ -46,7 +49,6 @@ namespace ElJournal.Controllers
             {
                 DB db = DB.GetInstance();
                 parameters.Add("@id", id);
-
                 response.Data = await db.ExecSelectQuery(sqlQuery, parameters);
                 response.Succesful = true;
             }
