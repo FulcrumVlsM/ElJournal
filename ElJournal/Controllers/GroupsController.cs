@@ -10,6 +10,7 @@ using ElJournal.DBInteract;
 
 namespace ElJournal.Controllers
 {
+    //develop: Vilisov Mikhail
     public class GroupsController : ApiController
     {
         private const string GROUP_ALL_PERMISSION = "GROUP_ALL_PERMISSION";

@@ -10,6 +10,7 @@ using ElJournal.DBInteract;
 
 namespace ElJournal.Controllers
 {
+    //develop: Mikhail
     public class StudentsController : ApiController
     {
         //TODO: студент имеет следующие данные:
