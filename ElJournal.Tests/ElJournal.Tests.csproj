@@ -91,6 +91,12 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Controllers\FacultiesControllerTest.cs" />
+    <Compile Include="Controllers\GroupsControllerTest.cs" />
+    <Compile Include="Controllers\PersonsControllerTest.cs" />
+    <Compile Include="Controllers\StudentsControllerTest.cs" />
+    <Compile Include="Controllers\DepartmentsControllerTest.cs" />
+    <Compile Include="Controllers\AccountsControllerTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Controllers\HomeControllerTest.cs" />
   </ItemGroup>

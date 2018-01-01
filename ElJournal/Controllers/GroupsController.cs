@@ -36,8 +36,6 @@ namespace ElJournal.Controllers
             return response;
         }
 
-            return response;
-        }
 
         // GET: api/Groups/5
         public async Task<dynamic> Get(string id)
