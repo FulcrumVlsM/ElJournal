@@ -65,7 +65,7 @@ namespace ElJournal.Controllers
             Response response = new Response();//формат ответа
             string sqlQuery = "dbo.AddGroup";
             Dictionary<string, string> parameters = new Dictionary<string, string>();
-            string authorId = Request.Headers.Authorization?.Scheme; //id пользователя из заголовка http
+            string authorId = Request?.Headers?.Authorization?.Scheme; //id пользователя из заголовка http
 
             try
             {
@@ -105,7 +105,7 @@ namespace ElJournal.Controllers
             Response response = new Response();
             string sqlQuery = "dbo.UpdateGroup";
             Dictionary<string, string> parameters = new Dictionary<string, string>();
-            string authorId = Request.Headers.Authorization?.Scheme; //id пользователя из заголовка http
+            string authorId = Request?.Headers?.Authorization?.Scheme; //id пользователя из заголовка http
 
             try
             {
@@ -147,7 +147,7 @@ namespace ElJournal.Controllers
             Response response = new Response();
             string sqlQuery = "delete from Groups where ID=@ID";
             Dictionary<string, string> parameters = new Dictionary<string, string>();
-            string authorId = Request.Headers.Authorization?.Scheme; //id пользователя из заголовка http
+            string authorId = Request?.Headers?.Authorization?.Scheme; //id пользователя из заголовка http
 
             try
             {

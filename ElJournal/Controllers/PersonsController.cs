@@ -30,7 +30,7 @@ namespace ElJournal.Controllers
         {
             RespPerson response = new RespPerson();//формат ответа
             string clientIP = Request.GetOwinContext().Request.RemoteIpAddress;//ip клиента
-            string token = Request.Headers.Authorization?.Scheme; //id пользователя
+            string token = Request?.Headers?.Authorization?.Scheme; //id пользователя
             string sqlQueryOutAuth = "select ID, name, info from Persons";//запрос для неавторизированного пользователя
             string sqlQueryWithAuth = "select * from Persons";//запрос для авторизированного пользователя
 
@@ -70,7 +70,7 @@ namespace ElJournal.Controllers
         {
             Response response = new Response();//формат ответа
             Dictionary<string, string> parameters = new Dictionary<string, string>();//параметры sql запроса
-            string token = Request.Headers.Authorization?.Scheme; //id пользователя из заголовка http
+            string token = Request?.Headers?.Authorization?.Scheme; //id пользователя из заголовка http
             string sqlQueryWithAuth = "select * from Persons where ID=@id"; //запрос для авторизованного пользователя
             string sqlQueryOutAuth = "select ID name,info from" +
                 " Persons where ID=@id";//запрос для неавторизованного пользователя
@@ -112,7 +112,7 @@ namespace ElJournal.Controllers
         public async Task<dynamic> Post([FromBody]Person person)
         {
             Response response = new Response(); //формат ответа
-            string token = Request.Headers.Authorization?.Scheme; //id пользователя из заголовка http
+            string token = Request?.Headers?.Authorization?.Scheme; //id пользователя из заголовка http
             var parameters = new Dictionary<string, string>();
             string sqlAddQuery = "dbo.AddPerson";
             string sqlGetId = "select top 1 ID from Persons where ID=@name and passport_id=@passport_id";
@@ -159,7 +159,7 @@ namespace ElJournal.Controllers
         public async Task<dynamic> Put(string id, [FromBody]Person person)
         {
             Response response = new Response(); //формат ответа
-            string token = Request.Headers.Authorization?.Scheme; //id пользователя из заголовка http
+            string token = Request?.Headers?.Authorization?.Scheme; //id пользователя из заголовка http
             var parameters = new Dictionary<string, string>();
             string sqlQuery = "dbo.UpdatePerson";
 
@@ -203,7 +203,7 @@ namespace ElJournal.Controllers
         public async Task<dynamic> Delete(string id)
         {
             Response response = new Response(); //формат ответа
-            string token = Request.Headers.Authorization?.Scheme; //id пользователя из заголовка http
+            string token = Request?.Headers?.Authorization?.Scheme; //id пользователя из заголовка http
             var parameters = new Dictionary<string, string>();
             string sqlQuery = "delete from Persons where ID=@id";
 

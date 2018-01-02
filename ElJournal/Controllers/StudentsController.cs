@@ -60,7 +60,7 @@ namespace ElJournal.Controllers
                 " values(@PersonID,@GroupSemesterID)";
             string sqlQuery2 = "dbo.GetGroupSemester(@SemesterID, @GroupID)";
             Dictionary<string, string> parameters = new Dictionary<string, string>();
-            string authorId = Request.Headers.Authorization?.Scheme; //id пользователя из заголовка http
+            string authorId = Request?.Headers?.Authorization?.Scheme; //id пользователя из заголовка http
 
             try
             {
@@ -103,7 +103,7 @@ namespace ElJournal.Controllers
             string sqlQuery = "dbo.UpdateStudentGroupSemester";
             string sqlQuery2 = "dbo.GetGroupSemester(@SemesterID, @GroupID)";
             Dictionary<string, string> parameters = new Dictionary<string, string>();
-            string authorId = Request.Headers.Authorization?.Scheme; //id пользователя из заголовка http
+            string authorId = Request?.Headers?.Authorization?.Scheme; //id пользователя из заголовка http
 
             try
             {
@@ -141,6 +141,7 @@ namespace ElJournal.Controllers
         }
 
         // DELETE: api/Students/5
+        //TODO: метод еще не готов
         public async Task<dynamic> Delete(int id)
         {
             return null;
