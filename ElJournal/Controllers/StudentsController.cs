@@ -142,7 +142,7 @@ namespace ElJournal.Controllers
 
         // DELETE: api/Students/5
         //TODO: метод еще не готов
-        public async Task<dynamic> Delete(int id)
+        public async Task<dynamic> Delete(string id)
         {
             return null;
         }

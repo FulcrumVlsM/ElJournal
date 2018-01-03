@@ -29,7 +29,7 @@ namespace ElJournal.Controllers
         public async Task<dynamic> Get()
         {
             RespPerson response = new RespPerson();//формат ответа
-            string clientIP = Request.GetOwinContext().Request.RemoteIpAddress;//ip клиента
+            string clientIP = Request?.GetOwinContext()?.Request?.RemoteIpAddress;//ip клиента
             string token = Request?.Headers?.Authorization?.Scheme; //id пользователя
             string sqlQueryOutAuth = "select ID, name, info from Persons";//запрос для неавторизированного пользователя
             string sqlQueryWithAuth = "select * from Persons";//запрос для авторизированного пользователя
