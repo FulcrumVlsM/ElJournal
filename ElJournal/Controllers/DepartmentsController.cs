@@ -15,6 +15,7 @@ namespace ElJournal.Controllers
     public class DepartmentsController : ApiController
     {
         // GET: api/Departments
+        //TODO: результат запроса должен записываться в Response.Data, а не возвращаться напрямую
         public async Task<dynamic> Get()
         {
             //формат ответа

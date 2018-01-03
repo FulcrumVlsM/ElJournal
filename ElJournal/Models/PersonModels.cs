@@ -13,5 +13,7 @@ namespace ElJournal.Models
         public string avn_login { get; set; }
         public string info { get; set; }
         public string RolesId { get; set; }
+        public string DepartmentId { get; set; }
+        public string FacultyId { get; set; }
     }
 }
