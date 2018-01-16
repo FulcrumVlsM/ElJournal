@@ -67,6 +67,7 @@ namespace ElJournal.Controllers
         
 
         // POST: api/Faculties
+        //TODO: запись в БД идет, но возвращается false
         public async Task<dynamic> Post([FromBody]Faculty faculty)
         {   
             Response response = new Response(); //формат ответа
