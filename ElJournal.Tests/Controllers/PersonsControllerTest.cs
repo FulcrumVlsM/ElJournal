@@ -12,7 +12,7 @@ namespace ElJournal.Tests.Controllers
         public void Get()
         {
             //expected
-            PersonsController controller = new PersonsController();
+            PeopleController controller = new PeopleController();
 
             //actual
             Response result1 = controller.Get().Result as Response;
@@ -34,7 +34,7 @@ namespace ElJournal.Tests.Controllers
         public void Post()
         {
             //expected
-            PersonsController controller = new PersonsController();
+            PeopleController controller = new PeopleController();
             Person person = new Person();
 
             //actual
@@ -49,7 +49,7 @@ namespace ElJournal.Tests.Controllers
         public void Put()
         {
             //expected
-            PersonsController controller = new PersonsController();
+            PeopleController controller = new PeopleController();
             Person person = new Person();
 
             //actual
@@ -64,7 +64,7 @@ namespace ElJournal.Tests.Controllers
         public void Delete()
         {
             //expected
-            PersonsController controller = new PersonsController();
+            PeopleController controller = new PeopleController();
             Person person = new Person();
 
             //actual

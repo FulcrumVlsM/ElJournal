@@ -12,7 +12,7 @@ using System.Web.Http.Controllers;
 namespace ElJournal.Controllers
 {
     //develop: Mikhail
-    public class PersonsController : ApiController
+    public class PeopleController : ApiController
     {
         private const string PERSON_COMMON_PERMISSION = "PERSON_COMMON_PERMISSION";
         private const string PERSON_DEPARTMENT_PERMISSION = "PERSON_DEPARTMENT_PERMISSION";
@@ -31,8 +31,8 @@ namespace ElJournal.Controllers
             RespPerson response = new RespPerson();//формат ответа
             string clientIP = Request?.GetOwinContext()?.Request?.RemoteIpAddress;//ip клиента
             string token = Request?.Headers?.Authorization?.Scheme; //id пользователя
-            string sqlQueryOutAuth = "select ID, name, info from Persons";//запрос для неавторизированного пользователя
-            string sqlQueryWithAuth = "select * from Persons";//запрос для авторизированного пользователя
+            string sqlQueryOutAuth = "select ID, name, info from People";//запрос для неавторизированного пользователя
+            string sqlQueryWithAuth = "select * from People";//запрос для авторизированного пользователя
 
             if (!findLast(response, clientIP))//если не прошло время ожидания след. запроса
                 return response;
