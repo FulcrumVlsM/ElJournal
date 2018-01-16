@@ -15,6 +15,7 @@ namespace ElJournal.Controllers
     public class DepartmentsController : ApiController
     {
         // GET: api/Departments
+        //TODO: результат запроса должен записываться в Response.Data, а не возвращаться напрямую
         public async Task<dynamic> Get()
         {
             //формат ответа
@@ -53,6 +54,8 @@ namespace ElJournal.Controllers
             }
             return response;
         }
+
+        //TODO: при добавлении кафедры нужно сделать, чтобы в ответе был id этой добавленной записи
         // POST: api/Departments
         public async Task<dynamic> Post([FromBody]Department department)
         {
@@ -63,6 +66,8 @@ namespace ElJournal.Controllers
             try
             {
                 DB db = DB.GetInstance();
+                //TODO: было переименование значений в БД. Я их приводил в более стандартный вид И текст разрешений лучше
+                // выносить в статическое поле класса или константу.
                 bool right = await db.CheckPermission(department.authorId, "DEPARTMENT_ALL_PERMISSION");
 
                 if (right) //если у пользователя есть права на операцию

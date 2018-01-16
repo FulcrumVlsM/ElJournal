@@ -20,7 +20,7 @@ namespace ElJournal.DBInteract
         private DB()
         {
             conn = new SqlConnection(connectionString);
-            //conn.Open();
+            //TODO: add log
         }
 
         public static DB GetInstance()
@@ -33,6 +33,7 @@ namespace ElJournal.DBInteract
         public void Dispose()
         {
             conn.Dispose();
+            //TODO: add log
         }
 
 
@@ -43,22 +44,32 @@ namespace ElJournal.DBInteract
 
             return Task.Run(async () =>
             {
+                var conn = new SqlConnection(connectionString);
+                var set = new List<Dictionary<string, dynamic>>(); //результат
                 await conn.OpenAsync();
-                SqlCommand query = new SqlCommand(sqlQuery, conn);
-                SqlDataReader result = await query.ExecuteReaderAsync();
-
-                List<Dictionary<string, dynamic>> set = new List<Dictionary<string, dynamic>>();
-                while (result.Read())
+                try
                 {
-                    Dictionary<string, dynamic> row = new Dictionary<string, dynamic>(result.FieldCount);
-                    for (int i = 0; i < result.FieldCount; i++)
+                    SqlCommand query = new SqlCommand(sqlQuery, conn);
+                    SqlDataReader result = await query.ExecuteReaderAsync();
+
+                    while (result.Read())
                     {
-                        row.Add(result.GetName(i), result.GetFieldValue<dynamic>(i));
+                        Dictionary<string, dynamic> row = new Dictionary<string, dynamic>(result.FieldCount);
+                        for (int i = 0; i < result.FieldCount; i++)
+                        {
+                            row.Add(result.GetName(i), result.GetFieldValue<dynamic>(i));
+                        }
+                        set.Add(row);
                     }
-                    set.Add(row);
+                    conn.Close();
+                }
+                catch(SqlException e)
+                {
+                    //TODO: add log
+                    conn.Close();
+                    throw e;
                 }
 
-                conn.Close();
                 return set;
             });
         }
@@ -69,125 +80,187 @@ namespace ElJournal.DBInteract
 
             return Task.Run(async () =>
             {
+                var conn = new SqlConnection(connectionString);
+                var set = new List<Dictionary<string, dynamic>>(); //результат
                 await conn.OpenAsync();
-                SqlCommand query = new SqlCommand(sqlQuery, conn);
-                foreach (var obj in parameters)
-                    query.Parameters.Add(new SqlParameter(obj.Key, obj.Value));
-                SqlDataReader result = await query.ExecuteReaderAsync();
-
-                List<Dictionary<string, dynamic>> set = new List<Dictionary<string, dynamic>>();
-                while (result.Read())
+                try
                 {
-                    Dictionary<string, dynamic> row = new Dictionary<string, dynamic>(result.FieldCount);
-                    for (int i = 0; i < result.FieldCount; i++)
+                    SqlCommand query = new SqlCommand(sqlQuery, conn);
+                    foreach (var obj in parameters)//добавление параметров в запрос
+                        query.Parameters.Add(new SqlParameter(obj.Key, obj.Value));
+                    SqlDataReader result = await query.ExecuteReaderAsync();
+
+                    while (result.Read())
                     {
-                        row.Add(result.GetName(i), result.GetFieldValue<dynamic>(i));
+                        Dictionary<string, dynamic> row = new Dictionary<string, dynamic>(result.FieldCount);
+                        for (int i = 0; i < result.FieldCount; i++)
+                        {
+                            row.Add(result.GetName(i), result.GetFieldValue<dynamic>(i));
+                        }
+                        set.Add(row);
                     }
-                    set.Add(row);
+                    conn.Close();
+                }
+                catch(SqlException e)
+                {
+                    //TODO: add log
+                    conn.Close();
+                    throw e;
                 }
 
-                conn.Close();
                 return set;
             });
         }
         public Task<dynamic> ExecuteScalarQuery(string sqlQuery)
         {
-            if (sqlQuery.Contains("insert") || sqlQuery.Contains("delete"))
+            if (sqlQuery.Contains("insert") || sqlQuery.Contains("delete"))//запрет на инструкции добавления и удаления
                 throw new FormatException("Incorrect sql query for this method");
 
             return Task.Run(async () =>
             {
+                var conn = new SqlConnection(connectionString);//создание подключения
                 await conn.OpenAsync();
-                SqlCommand query = new SqlCommand(sqlQuery, conn);
-                dynamic result = await query.ExecuteScalarAsync();
 
-                conn.Close();
+                dynamic result = default(dynamic);
+                try
+                {
+                    SqlCommand query = new SqlCommand(sqlQuery, conn);//формирование запроса
+                    result = await query.ExecuteScalarAsync();//выполнение запроса
+                    conn.Close();//закрытие подключения
+                }
+                catch(SqlException e)
+                {
+                    //TODO: add log;
+                    conn.Close();
+                    throw e;
+                }
+
                 return result;
             });
         }
         public Task<dynamic> ExecuteScalarQuery(string sqlQuery, Dictionary<string,string> parameters)
         {
-            if (sqlQuery.Contains("insert") || sqlQuery.Contains("delete"))
+            if (sqlQuery.Contains("insert") || sqlQuery.Contains("delete"))//запрет на операции добавления и удаления
                 throw new FormatException("Incorrect sql query for this method");
 
             return Task.Run(async () =>
             {
+                var conn = new SqlConnection(connectionString);//создание подключения
                 await conn.OpenAsync();
-                SqlCommand query = new SqlCommand(sqlQuery, conn);
-                foreach (var obj in parameters)
+
+                SqlCommand query = new SqlCommand(sqlQuery, conn); //формирование запроса
+
+                foreach (var obj in parameters)//добавление параметров к запросу
                     query.Parameters.Add(new SqlParameter(obj.Key, obj.Value));
+
                 dynamic result = default(dynamic);
                 try
                 {
-                    result = await query.ExecuteScalarAsync();
+                    result = await query.ExecuteScalarAsync();//выполнение запроса
                 }
                 catch(SqlException e)
                 {
-                    result = null;
+                    //TODO: add log
+                    conn.Close();
+                    throw e;
                 }
 
-                conn.Close();
+                conn.Close();//закрытие подклчения
                 return result;
             });
         }
         public int ExecStoredProcedure(string procedureName, Dictionary<string,string> parameters)
         {
-            //TODO: после появления исключения не закрывается подключение к бд. Исправить.
             lock (locker)
             {
                 conn.Open();
-                SqlCommand query = new SqlCommand(procedureName, conn);
-                query.CommandType = System.Data.CommandType.StoredProcedure;
+                int answer = default(int);
 
-                foreach (var obj in parameters)
-                    query.Parameters.Add(new SqlParameter(obj.Key, obj.Value));
-                var returnParam = query.Parameters.Add("@ReturnVal", SqlDbType.Int);
-                returnParam.Direction = ParameterDirection.ReturnValue;
+                try
+                {
+                    SqlCommand query = new SqlCommand(procedureName, conn);//формирование запроса
+                    query.CommandType = System.Data.CommandType.StoredProcedure;
 
-                query.ExecuteNonQuery();
-                int answer = (int)returnParam.Value;
+                    foreach (var obj in parameters)//добавление параметров к запросу
+                        query.Parameters.Add(new SqlParameter(obj.Key, obj.Value));
+
+                    var returnParam = query.Parameters.Add("@ReturnVal", SqlDbType.Int);//выходноу значение
+                    returnParam.Direction = ParameterDirection.ReturnValue;
+
+                    query.ExecuteNonQuery();//выполнение запроса
+                    answer = (int)returnParam.Value;//получение выходного значения
+                }
+                catch(SqlException e)
+                {
+                    //TODO: add log
+                    conn.Close();
+                    throw e;
+                }
+
                 conn.Close();
                 return answer;
             }
         }
         public int ExecInsOrDelQuery(string sqlQuery)
         {
-            if(sqlQuery.Contains("select"))
+            if(sqlQuery.Contains("select"))//запрет на выборку (select)
                 throw new FormatException("Incorrect sql query for this method");
 
             lock (locker)
             {
                 conn.Open();
-                SqlCommand query = new SqlCommand(sqlQuery, conn);
-                int result = query.ExecuteNonQuery();
-                conn.Close();
+                int result = default(int);
+                try
+                {
+                    SqlCommand query = new SqlCommand(sqlQuery, conn);
+                    result = query.ExecuteNonQuery();
+                }
+                catch(SqlException e)
+                {
+                    //TODO: add log
+                    conn.Close();
+                    throw e;
+                }
 
+                conn.Close();
                 return result;
             }
         }
         public int ExecInsOrDelQuery(string sqlQuery, Dictionary<string,string> parameters)
         {
-            if (sqlQuery.Contains("select"))
+            if (sqlQuery.Contains("select"))//запрет на выборку (select)
                 throw new FormatException("Incorrect sql query for this method");
 
             lock (locker)
             {
                 conn.Open();
-                SqlCommand query = new SqlCommand(sqlQuery, conn);
-                foreach (var obj in parameters)
-                    query.Parameters.Add(new SqlParameter(obj.Key, obj.Value));
-                int result = query.ExecuteNonQuery();
-                conn.Close();
+                int result = default(int);
+                try
+                {
+                    SqlCommand query = new SqlCommand(sqlQuery, conn);//формирование запроса
 
+                    foreach (var obj in parameters)//добавление добавление параметров к запросу
+                        query.Parameters.Add(new SqlParameter(obj.Key, obj.Value));
+
+                    result = query.ExecuteNonQuery();//выполнение запроса
+                }
+                catch(SqlException e)
+                {
+                    //TODO: add log
+                    conn.Close();
+                    throw e;
+                }
+
+                conn.Close();
                 return result;
             }
         }
 
         public async Task<bool> CheckPermission(string personId,string permission)
         {
-            string sqlQuery = "select dbo.CheckRight(@personID, @permission)";
+            string sqlQuery = "select dbo.CheckRight(@token, @permission)";
             Dictionary<string, string> parameters = new Dictionary<string, string>();
-            parameters.Add("@personID", personId);
+            parameters.Add("@token", personId);
             parameters.Add("@permission", permission);
             if (!string.IsNullOrWhiteSpace(personId))
                 return await ExecuteScalarQuery(sqlQuery, parameters);

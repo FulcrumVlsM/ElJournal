@@ -12,24 +12,31 @@ using System.Data.SqlClient;
 
 namespace ElJournal.Controllers
 {
+    //develop: Mikhail
     public class FacultiesController : ApiController
     {
+        //TODO: проверка прав пользователя учитывает в данный момент только разрешения общего типа
+
+        private const string FACULTY_COMMON_PERMISSION = "FACULTY_COMMON_PERMISSION"; //общее разрешение
+        private const string FACULTY_PERMISSION = "FACULTY_PERMISSION"; //разрешение на связанный
+
         // GET: api/Faculties
         public async Task<dynamic> Get()
         {
-            //формат ответа
-            Response response = new Response();
+            Response response = new Response();//формат ответа
+            string sqlQuery = "select * from Faculties";
 
             try
             {
                 DB db = DB.GetInstance();
                 response.Succesful = true;
-                response.Data = await db.ExecSelectQuery("select * from Faculties");
+                response.Data = await db.ExecSelectQuery(sqlQuery);//запроск БД
             }
             catch(Exception e)
             {
                 response.Error = e.ToString();
                 response.message = e.Message;
+                //TODO: add log
             }
             return response;
         }
@@ -37,20 +44,22 @@ namespace ElJournal.Controllers
         // GET: api/Faculties/guid
         public async Task<dynamic> Get(string id)
         {
-            Response response = new Response();
+            Response response = new Response();//формат ответа
+            string sqlQuery = "select * from Faculties where ID=@id";
+            Dictionary<string, string> parameters = new Dictionary<string, string>();
 
             try
             {
                 DB db = DB.GetInstance();
-                Dictionary<string, string> parameters = new Dictionary<string, string>();
-                parameters.Add("@id", id);
+                parameters.Add("@id", id);//добавление параметра к запросу
                 response.Succesful = true;
-                response.Data = await db.ExecSelectQuery("select * from Faculties where ID=@id", parameters);
+                response.Data = await db.ExecSelectQuery(sqlQuery, parameters);
             }
             catch(Exception e)
             {
                 response.Error = e.ToString();
                 response.message = e.Message;
+                //TODO: add log
             }
 
             return response;
@@ -58,31 +67,31 @@ namespace ElJournal.Controllers
         
 
         // POST: api/Faculties
+        //TODO: запись в БД идет, но возвращается false
         public async Task<dynamic> Post([FromBody]Faculty faculty)
         {   
             Response response = new Response(); //формат ответа
-            string sqlQuery = "insert into Faculties(dekanPersonID,name,description) " +
-                        "values(@dekanPersonID,@name,@description)";
+            var parameters = new Dictionary<string, string>();
+            string sqlAddQuery = "dbo.AddFaculty";
+            string sqlSQuery = "select top 1 ID from Faculties where name=@name";
 
             try
             {
                 DB db = DB.GetInstance();
-                bool right = await db.CheckPermission(faculty.authorId, "FACULTY_ALL_PERMISSION");
+                bool right = await db.CheckPermission(faculty.authorId, FACULTY_COMMON_PERMISSION);
                 
                 if (right) //если у пользователя есть права на операцию
                 {
-                    //необходимые параметры запроса
-                    Dictionary<string, string> parameters = new Dictionary<string, string>();
-                    parameters.Add("@dekanPersonID", faculty.dekanId);
+                    parameters.Add("@dekanID", faculty.dekanId); //добавление параметров к запросу
                     parameters.Add("@name", faculty.name);
                     parameters.Add("@description", faculty.description);
 
-                    //выполнение запроса
-                    int res = db.ExecInsOrDelQuery(sqlQuery, parameters);
+                    int res = db.ExecStoredProcedure(sqlAddQuery, parameters); //выполнение запроса
                     if (res != 0)
                     {
                         response.Succesful = true;
                         response.message = "New faculty was added";
+                        response.Data = new { ID = db.ExecuteScalarQuery(sqlSQuery,parameters) };
                     }
                     else
                         response.message = "Faculty not added";
@@ -94,6 +103,7 @@ namespace ElJournal.Controllers
             {
                 response.Error = e.ToString();
                 response.message = e.Message;
+                //TODO: add log
             }
 
             return response;
@@ -103,21 +113,20 @@ namespace ElJournal.Controllers
         public async Task<dynamic> Put(string id, [FromBody]Faculty faculty)
         {
             Response response = new Response(); //формат результата запроса
+            var parameters = new Dictionary<string, string>();
             string sqlQuery = "dbo.UpdateFaculty";
 
             try
             {
                 DB db = DB.GetInstance();
-                bool right = await db.CheckPermission(faculty.authorId, "FACULTY_ALL_PERMISSION");
+                bool right = await db.CheckPermission(faculty.authorId, FACULTY_COMMON_PERMISSION);
                 if (right)
                 {
-                    //выполнение операции
-                    Dictionary<string, string> parameters = new Dictionary<string, string>();
-                    parameters.Add("@ID", id);
+                    parameters.Add("@ID", id);              //добавление параметров к запросу
                     parameters.Add("@dekanID", faculty.dekanId);
                     parameters.Add("@name", faculty.name);
                     parameters.Add("@description", faculty.description);
-                    int res = db.ExecStoredProcedure(sqlQuery, parameters);
+                    int res = db.ExecStoredProcedure(sqlQuery, parameters);//выполнение запроса
                     if (res == 0)
                         response.Succesful = true;
                     else
@@ -130,6 +139,7 @@ namespace ElJournal.Controllers
             {
                 response.Error = e.ToString();
                 response.message = e.Message;
+                //TODO: add log
             }
 
             return response;
@@ -139,17 +149,17 @@ namespace ElJournal.Controllers
         public async Task<dynamic> Delete(string id, [FromBody]Faculty faculty)
         {
             Response response = new Response(); //формат ответа
-            string sqlQuery = "delete from Faculties where ID=@ID";
+            var parameters = new Dictionary<string, string>();
+            string sqlDelQuery = "delete from Faculties where ID=@ID";
 
             try
             {
                 DB db = DB.GetInstance();
-                bool right = await db.CheckPermission(faculty.authorId, "FACULTY_ALL_PERMISSION");
+                bool right = await db.CheckPermission(faculty.authorId, FACULTY_COMMON_PERMISSION);//проверка наличия прав
                 if (right)
                 {
-                    Dictionary<string, string> parameters = new Dictionary<string, string>();
                     parameters.Add("@ID", id);
-                    int result = db.ExecInsOrDelQuery(sqlQuery, parameters);
+                    int result = db.ExecInsOrDelQuery(sqlDelQuery, parameters);
                     if (result == 1)
                     {
                         response.Succesful = true;
@@ -165,6 +175,7 @@ namespace ElJournal.Controllers
             {
                 response.Error = e.ToString();
                 response.message = e.Message;
+                //TODO: add log
             }
 
             return response;
