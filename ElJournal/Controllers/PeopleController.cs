@@ -71,9 +71,9 @@ namespace ElJournal.Controllers
             Response response = new Response();//формат ответа
             Dictionary<string, string> parameters = new Dictionary<string, string>();//параметры sql запроса
             string token = Request?.Headers?.Authorization?.Scheme; //id пользователя из заголовка http
-            string sqlQueryWithAuth = "select * from Persons where ID=@id"; //запрос для авторизованного пользователя
+            string sqlQueryWithAuth = "select * from People where ID=@id"; //запрос для авторизованного пользователя
             string sqlQueryOutAuth = "select ID name,info from" +
-                " Persons where ID=@id";//запрос для неавторизованного пользователя
+                " People where ID=@id";//запрос для неавторизованного пользователя
 
             try
             {
@@ -205,7 +205,7 @@ namespace ElJournal.Controllers
             Response response = new Response(); //формат ответа
             string token = Request?.Headers?.Authorization?.Scheme; //id пользователя из заголовка http
             var parameters = new Dictionary<string, string>();
-            string sqlQuery = "delete from Persons where ID=@id";
+            string sqlQuery = "delete from People where ID=@id";
 
             try
             {
