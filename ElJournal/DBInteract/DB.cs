@@ -267,4 +267,17 @@ namespace ElJournal.DBInteract
             else return false;
         }
     }
+
+    public static class Permission
+    {
+        public const string PERSON_COMMON_PERMISSION = "PERSON_COMMON_PERMISSION";
+
+        public const string FACULTY_PERMISSION = "FACULTY_PERMISSION";
+        public const string FACULTY_COMMON_PERMISSION = "FACULTY_COMMON_PERMISSION";
+
+        public const string STUDENT_COMMON_PERMISSION = "STUDENT_COMMON_PERMISSION";
+        public const string STUDENT_PERMISSION = "STUDENT_PERMISSION";
+
+
+    }
 }
