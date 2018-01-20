@@ -234,6 +234,7 @@
     <Compile Include="Models\DepartmentModels.cs" />
     <Compile Include="Models\GroupModels.cs" />
     <Compile Include="Models\IdentityModels.cs" />
+    <Compile Include="Models\LabWorkModels.cs" />
     <Compile Include="Models\PersonModels.cs" />
     <Compile Include="Models\FacultyModels.cs" />
     <Compile Include="Models\Response.cs" />
