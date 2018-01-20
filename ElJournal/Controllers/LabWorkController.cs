@@ -9,6 +9,7 @@ using ElJournal.Models;
 
 namespace ElJournal.Controllers
 {
+    //develop: Mikhail
     public class LabWorkController : ApiController
     {
         /* Лабораторные работы связываются с предметом (SubjectGroupSemester).
@@ -28,8 +29,8 @@ namespace ElJournal.Controllers
 
         //возаращает список лабораторных по указанному предмету
         [HttpGet]
-        [Route("api/LabWork/plan/{id}")]
-        public async Task<dynamic> GetPlan(string id)
+        [Route("api/LabWork/plan/{subjectId}")]
+        public async Task<dynamic> GetPlan(string subjectId)
         {
             return null;
         }
@@ -62,11 +63,11 @@ namespace ElJournal.Controllers
         }
 
 
-        // POST: api/LabWork/exec/5/5/true
+        // POST: api/LabWork/exec/5/5?state=true
         // отметка о выполнении лаб. работы (параметр state)
         [HttpPost]
-        [Route("api/LabWork/exec/{studentId}/{subjWorkId}/{state:bool}")]
-        public async Task<dynamic> PostExec([FromBody]string lab, string studentId, string subjWorkId, bool state=true)
+        [Route("api/LabWork/exec/{studentId}/{subjWorkId}")]
+        public async Task<dynamic> PostExec([FromBody]string lab, string studentId, string subjWorkId, [FromUri]bool state=true)
         {
             //если state=false, запись удаляется из бд.
             return null;
