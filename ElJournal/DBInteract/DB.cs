@@ -278,6 +278,10 @@ namespace ElJournal.DBInteract
         public const string STUDENT_COMMON_PERMISSION = "STUDENT_COMMON_PERMISSION";
         public const string STUDENT_PERMISSION = "STUDENT_PERMISSION";
 
+        public const string LBWRK_COMMON_PERMISSION = "LBWRK_COMMON_PERMISSION";
+        public const string LBWRK_PERMISSION = "LBWRK_PERMISSION";
+        public const string LBWRK_READ_PERMISSION = "LBWRK_READ_PERMISSION";
+
 
     }
 }
