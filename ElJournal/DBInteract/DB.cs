@@ -169,12 +169,12 @@ namespace ElJournal.DBInteract
                 return result;
             });
         }
-        public int ExecStoredProcedure(string procedureName, Dictionary<string,string> parameters)
+        public dynamic ExecStoredProcedure(string procedureName, Dictionary<string,string> parameters)
         {
             lock (locker)
             {
                 conn.Open();
-                int answer = default(int);
+                dynamic answer = default(dynamic);
 
                 try
                 {
@@ -188,7 +188,7 @@ namespace ElJournal.DBInteract
                     returnParam.Direction = ParameterDirection.ReturnValue;
 
                     query.ExecuteNonQuery();//выполнение запроса
-                    answer = (int)returnParam.Value;//получение выходного значения
+                    answer = returnParam.Value;//получение выходного значения
                 }
                 catch(SqlException e)
                 {

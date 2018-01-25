@@ -11,6 +11,6 @@ namespace ElJournal.Models
         public string Name { get; set; }
         public string FileName { get; set; }
         public string File { get; set; }
-        public string Info { get; set; }
+        public string Advanced { get; set; }
     }
 }

@@ -199,18 +199,134 @@ namespace ElJournal.Controllers
         // отметка о выполнении лаб. работы (параметр state)
         [HttpPost]
         [Route("api/LabWork/exec/{studentId}/{subjWorkId}")]
-        public async Task<dynamic> PostExec([FromBody]LabWork lab, string studentId, string subjWorkId, 
+        public async Task<dynamic> PostExec(string studentId, string subjWorkId, 
             [FromUri]bool state=true)
         {
-            return null;
+            Response response = new Response();
+            string token = Request?.Headers?.Authorization?.Scheme;
+            var parameters = new Dictionary<string, string>();
+            string sqlQuery1 = "select * from dbo.CheckStudentLabWorkPlan(@studentId,@planId)";
+            string sqlQuery2 = "select SubjectGroupSemesterID from LabWorksPlan where ID=@planId";
+            string sqlQuery3 = "select * from dbo.CheckTeach(@token,@subjectId)";
+            string sqlQuery4 = "insert into LabWorksExecution(LabWorkPlanID,StudentGroupSemesterID)" +
+                " values(@planId,@studentId)";
+            string sqlQuery5 = "delete from LabWorksExecution where LabWorkPlanID=@planId " +
+                "and StudentGroupSemesterID=@studentId";
+
+            parameters.Add("@studentId", studentId);
+            parameters.Add("@planId", subjWorkId);
+            parameters.Add("@token", token);
+
+            try
+            {
+                DB db = DB.GetInstance();
+                bool commonRight=default(bool), teacherRight=default(bool), trueData=default(bool);
+
+                Task[] tasks = new Task[3]
+                {
+                    new Task(async () => commonRight=await db.CheckPermission(token,Permission.LBWRK_COMMON_PERMISSION)),
+                    new Task(async () => trueData = await db.ExecuteScalarQuery(sqlQuery1,parameters)),
+                    new Task(async () =>
+                    {
+                        parameters.Add("@subjectId",await db.ExecuteScalarQuery(sqlQuery2,parameters));
+                        teacherRight = await db.CheckPermission(token,Permission.LBWRK_PERMISSION) ?
+                             await db.ExecuteScalarQuery(sqlQuery3,parameters) : false;
+                    })
+                };
+                foreach (var task in tasks)
+                    task.Start();
+                Task.WaitAll(tasks);
+
+                if(trueData && (commonRight || teacherRight))
+                {
+                    if (state)
+                    {
+                        int result = db.ExecInsOrDelQuery(sqlQuery4, parameters);
+                        if (result == 1)
+                            response.Succesful = true;
+                        else
+                        {
+                            //TODO: add log
+                            response.message = "Unknown error. Data could not be saved. Save the original query data to " +
+                                "the log and send it to the developers";
+                        }
+                    }
+                    else
+                    {
+                        int result = db.ExecInsOrDelQuery(sqlQuery5, parameters);
+                        if (result == 1)
+                            response.Succesful = true;
+                        else
+                        {
+                            //TODO: add log
+                            response.message = "Unknown error. Data could be lost. Save the original query data to " +
+                                "the log and send it to the developers";
+                        }
+                    }
+                }
+                else
+                {
+                    if (!trueData)
+                        response.Error = ErrorMessage.INCORRECT_REQUEST_DATA;
+                    else
+                        response.Error = ErrorMessage.PERMISSION_ERROR;
+                }
+            }
+            catch(Exception e)
+            {
+                //TODO: add log
+                response.Error = e.ToString();
+                response.message = e.Message;
+            }
+
+            return response;
         }
 
 
         // POST: api/LabWork
         // добавление лабораторной работы
+        // TODO: еще нет работы с файлами
         public async Task<dynamic> Post([FromBody]LabWork lab)
         {
-            return null;
+            Response response = new Response();
+            string token = Request?.Headers?.Authorization?.Scheme;
+            var parameters = new Dictionary<string, string>();
+            string sqlQuery = "dbo.AddLabWork";
+
+            try
+            {
+                DB db = DB.GetInstance();
+
+                bool commonRight = await db.CheckPermission(token, Permission.LBWRK_COMMON_PERMISSION);
+                bool teacherRight = await db.CheckPermission(token, Permission.LBWRK_PERMISSION);
+                if (commonRight || teacherRight)
+                {
+                    parameters.Add("@name", lab.Name);
+                    parameters.Add("@advanced", lab.Advanced);
+
+                    string result = db.ExecStoredProcedure(sqlQuery, parameters);
+                    if (!string.IsNullOrEmpty(result))
+                    {
+                        response.Data = new { ID = result };
+                        response.Succesful = true;
+                    }
+                    else
+                    {
+                        response.Error = ErrorMessage.INCORRECT_REQUEST_DATA;
+                        //TODO: add log
+                    }
+                }
+                else
+                    response.Error = ErrorMessage.PERMISSION_ERROR;
+            }
+            catch(Exception e)
+            {
+                //TODO: add log
+                response.Error = e.ToString();
+                response.message = e.Message;
+            }
+
+            return response;
         }
 
 
