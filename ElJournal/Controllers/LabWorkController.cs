@@ -334,7 +334,44 @@ namespace ElJournal.Controllers
         // изменение лабораторной работы
         public async Task<dynamic> Put(string id, [FromBody]LabWork lab)
         {
-            return null;
+            Response response = new Response();
+            string token = Request?.Headers?.Authorization?.Scheme;
+            var parameters = new Dictionary<string, string>();
+            string sqlQuery = "dbo.UpdateLabWork";
+
+            try
+            {
+                DB db = DB.GetInstance();
+
+                parameters.Add("@ID", id);
+                parameters.Add("@name", lab.Name);
+                parameters.Add("@advanced", lab.Advanced);
+
+                bool right = await db.CheckPermission(token, Permission.LBWRK_COMMON_PERMISSION) ||
+                    await db.CheckPermission(token, Permission.LBWRK_PERMISSION);
+                if (right)
+                {
+                    int result = db.ExecStoredProcedure(sqlQuery, parameters);
+                    if (result == 0)
+                        response.Succesful = true;
+                    else
+                    {
+                        //TODO: add log
+                        response.message = "Unknown error. Send logs to developers.";
+                        response.Error = ErrorMessage.UNKNOWN_ERROR;
+                    }
+                }
+                else
+                    response.Error = ErrorMessage.PERMISSION_ERROR;
+            }
+            catch(Exception e)
+            {
+                //TODO: add log
+                response.Error = e.ToString();
+                response.message = e.Message;
+            }
+
+            return response;
         }
 
 
@@ -344,7 +381,58 @@ namespace ElJournal.Controllers
         [Route("api/LabWork/plan/{id}")]
         public async Task<dynamic> DeletePlan(string id)
         {
-            return null;
+            Response response = new Response();
+            string token = Request?.Headers?.Authorization?.Scheme;
+            var parameters = new Dictionary<string, string>();
+            string sqlQuery1 = "delete from LabWorksPlan where ID=@ID";
+            string sqlQuery2 = "select SubjectGroupSemesterID from LabWorksPlan where ID=@ID";
+            string sqlQuery3 = "select * from dbo.CheckTeach(@token,@subjectId)";
+
+            parameters.Add("@ID", id);
+            parameters.Add("@token", token);
+
+            try
+            {
+                DB db = DB.GetInstance();
+
+                bool commonRight = default(bool), teacherRight = default(bool);
+                Task[] tasks = new Task[2]
+                {
+                    new Task(async () => commonRight = await db.CheckPermission(token, Permission.LBWRK_COMMON_PERMISSION)),
+                    new Task(async () =>
+                    {
+                        parameters.Add("@subjectId", await db.ExecuteScalarQuery(sqlQuery2, parameters));
+                        teacherRight = await db.CheckPermission(token, Permission.LBWRK_PERMISSION) ?
+                             await db.ExecuteScalarQuery(sqlQuery3, parameters) : false;
+                    })
+                };
+                foreach (var task in tasks)
+                    task.Start();
+
+                Task.WaitAll(tasks);
+                if (commonRight || teacherRight)
+                {
+                    int result = db.ExecInsOrDelQuery(sqlQuery1, parameters);
+                    if (result == 1)
+                        response.Succesful = true;
+                    else
+                    {
+                        //TODO: add log
+                        response.message = "Unknown error. Send logs to developers.";
+                        response.Error = ErrorMessage.UNKNOWN_ERROR;
+                    }
+                }
+                else
+                    response.Error = ErrorMessage.PERMISSION_ERROR;
+            }
+            catch (Exception e)
+            {
+                //TODO: add log
+                response.Error = e.ToString();
+                response.message = e.Message;
+            }
+
+            return response;
         }
 
 
@@ -352,7 +440,42 @@ namespace ElJournal.Controllers
         // удаление лабораторной работы
         public async Task<dynamic> Delete(string id)
         {
-            return null;
+            Response response = new Response();
+            string token = Request?.Headers?.Authorization?.Scheme;
+            var parameters = new Dictionary<string, string>();
+            string sqlQuery = "delete from LabWorks where ID=@ID";
+
+            parameters.Add("@ID", id);
+
+            try
+            {
+                DB db = DB.GetInstance();
+
+                bool right = await db.CheckPermission(token, Permission.LBWRK_COMMON_PERMISSION);
+                
+                if (right)
+                {
+                    int result = db.ExecInsOrDelQuery(sqlQuery, parameters);
+                    if (result == 1)
+                        response.Succesful = true;
+                    else
+                    {
+                        //TODO: add log
+                        response.message = "Unknown error. Send logs to developers.";
+                        response.Error = ErrorMessage.UNKNOWN_ERROR;
+                    }
+                }
+                else
+                    response.Error = ErrorMessage.PERMISSION_ERROR;
+            }
+            catch (Exception e)
+            {
+                //TODO: add log
+                response.Error = e.ToString();
+                response.message = e.Message;
+            }
+
+            return response;
         }
     }
 }
