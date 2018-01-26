@@ -12,6 +12,7 @@ using ElJournal.Models;
 
 namespace ElJournal.Controllers
 {
+    //develop: Elena
     public class SubjectsController : ApiController
     {
         // GET: api/Subjects
@@ -63,7 +64,7 @@ namespace ElJournal.Controllers
             try
             {
                 DB db = DB.GetInstance();
-                bool right = await db.CheckPermission(subject.authorId, "SUBJECT_ALL_PERMISSION");
+                bool right = await db.CheckPermission(subject.authorId, "SUBJECT_PERMISSION");
 
                 if (right) //если у пользователя есть права на операцию
                 {
@@ -104,7 +105,7 @@ namespace ElJournal.Controllers
             try
             {
                 DB db = DB.GetInstance();
-                bool right = await db.CheckPermission(subject.authorId, "SUBJECT_ALL_PERMISSION");
+                bool right = await db.CheckPermission(subject.authorId, "SUBJECT_PERMISSION");
                 if (right)
                 {
                     //выполнение операции
@@ -140,7 +141,7 @@ namespace ElJournal.Controllers
             try
             {
                 DB db = DB.GetInstance();
-                bool right = await db.CheckPermission(subject.authorId, "DUBJECT_ALL_PERMISSION");
+                bool right = await db.CheckPermission(subject.authorId, "SUBJECT_PERMISSION");
                 if (right)
                 {
                     Dictionary<string, string> parameters = new Dictionary<string, string>();

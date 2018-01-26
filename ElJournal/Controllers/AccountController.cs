@@ -12,23 +12,43 @@ using System.Data.SqlClient;
 
 namespace ElJournal.Controllers
 {
+    //develop: Elena
     public class AccountController : ApiController
     {
         //TODO: нужно сделать следующие методы:
         /*1. Get: логин и пароль получать через header
           2. Post: создание нового аккаунта
           3. Put: изменение пароля и логина*/
-        
+            //4. Добавить проверку пароля
+
         // GET: api/AccountW
+        [HttpPost]
+        [Route("api/Account/authorize")]
+        public async Task<dynamic>Authorize([FromBody]AccountModels account)
+        {
+            
+            return null;
+        }
         public async Task<dynamic> Get()
         {
             //формат ответа
             Response response = new Response();
+            string token = Request?.Headers?.Authorization?.Scheme; //id пользователя
+            DB db = DB.GetInstance();
+            AccountModels account = new AccountModels();
+            Dictionary<string, string> parameters = new Dictionary<string, string>();
             try
             {
-                DB db = DB.GetInstance();
-                response.Succesful = true;
-                return await db.ExecSelectQuery("select * from Accounts");
+                bool right = await db.CheckPermission(account.authorId, "ACCOUNT_PERMISSION");
+                if (right)
+                {
+                    response.Succesful = true;
+                    response.Data = await db.ExecSelectQuery("SELECT Accounts.PersonID, People.name, Accounts.login, Accounts.password, Accounts.email FROM Accounts INNER JOIN People ON Accounts.PersonID = People.ID");
+                }
+                else
+                    parameters.Add("@id", token);
+                    response.Succesful = true;
+                    response.Data = await db.ExecSelectQuery("select login, email from AccountPeople(@id)", parameters);             
             }
             catch (Exception e)
             {
@@ -48,7 +68,7 @@ namespace ElJournal.Controllers
                 Dictionary<string, string> parameters = new Dictionary<string, string>();
                 parameters.Add("@id", id);
                 response.Succesful = true;
-                response.Data = await db.ExecSelectQuery("select * from Accounts", parameters);
+                response.Data = (await db.ExecSelectQuery("select login, email from AccountPeople(@id)", parameters))[0];
             }
             catch (Exception e)
             {
@@ -107,7 +127,7 @@ namespace ElJournal.Controllers
             try
             {
                 DB db = DB.GetInstance();
-                bool right = await db.CheckPermission(account.authorId, "ACCOUNT_ALL_PERMISSION");
+                bool right = await db.CheckPermission(account.authorId, "ACCOUNT_PERMISSION");
                 if (right)
                 {
                     //выполнение операции
@@ -143,7 +163,7 @@ namespace ElJournal.Controllers
             try
             {
                 DB db = DB.GetInstance();
-                bool right = await db.CheckPermission(account.authorId, "ACCOUNT_ALL_PERMISSION");
+                bool right = await db.CheckPermission(account.authorId, "ACCOUNT_PERMISSION");
                 if (right)
                 {
                     Dictionary<string, string> parameters = new Dictionary<string, string>();

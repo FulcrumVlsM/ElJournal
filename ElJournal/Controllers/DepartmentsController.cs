@@ -12,6 +12,7 @@ using ElJournal.Models;
 
 namespace ElJournal.Controllers
 {
+    //develop: Elena
     public class DepartmentsController : ApiController
     {
         // GET: api/Departments
@@ -24,7 +25,7 @@ namespace ElJournal.Controllers
             {
                 DB db = DB.GetInstance();
                 response.Succesful = true;
-                return await db.ExecSelectQuery("select * from Departments");
+                response.Data = await db.ExecSelectQuery("select * from Departments");
             }
             catch (Exception e)
             {
@@ -68,7 +69,7 @@ namespace ElJournal.Controllers
                 DB db = DB.GetInstance();
                 //TODO: было переименование значений в БД. Я их приводил в более стандартный вид И текст разрешений лучше
                 // выносить в статическое поле класса или константу.
-                bool right = await db.CheckPermission(department.authorId, "DEPARTMENT_ALL_PERMISSION");
+                bool right = await db.CheckPermission(department.authorId, "DEPARTMENT_COMMON_PERMISSION");
 
                 if (right) //если у пользователя есть права на операцию
                 {
@@ -109,7 +110,7 @@ namespace ElJournal.Controllers
             try
             {
                 DB db = DB.GetInstance();
-                bool right = await db.CheckPermission(department.authorId, "DEPARTMENT_ALL_PERMISSION");
+                bool right = await db.CheckPermission(department.authorId, "DEPARTMENT_COMMON_PERMISSION");
                 if (right)
                 {
                     //выполнение операции
@@ -145,7 +146,7 @@ namespace ElJournal.Controllers
             try
             {
                 DB db = DB.GetInstance();
-                bool right = await db.CheckPermission(department.authorId, "DEPARTMENT_ALL_PERMISSION");
+                bool right = await db.CheckPermission(department.authorId, "DEPARTMENT_COMMON_PERMISSION");
                 if (right)
                 {
                     Dictionary<string, string> parameters = new Dictionary<string, string>();

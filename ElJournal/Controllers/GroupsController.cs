@@ -10,10 +10,11 @@ using ElJournal.DBInteract;
 
 namespace ElJournal.Controllers
 {
-    //develop: Vilisov Mikhail
+    //develop: Elena
     public class GroupsController : ApiController
     {
-        private const string GROUP_ALL_PERMISSION = "GROUP_ALL_PERMISSION";
+        private const string GROUP_PERMISSION = "GROUP_PERMISSION";
+        private const string GROUP_COMMON_PERMISSION = "GROUP_СOMMON_PERMISSION";
 
         // GET: api/Groups
         public async Task<dynamic> Get()
@@ -75,7 +76,7 @@ namespace ElJournal.Controllers
                 parameters.Add("@FacultyID", group.facultyId);
                 parameters.Add("@curatorPersonID", group.curatorId);
 
-                bool right = await db.CheckPermission(authorId, GROUP_ALL_PERMISSION);
+                bool right = await db.CheckPermission(authorId, GROUP_COMMON_PERMISSION);
                 if (right)
                 {
                     int res = db.ExecStoredProcedure(sqlQuery, parameters);
@@ -111,7 +112,7 @@ namespace ElJournal.Controllers
             {
                 DB db = DB.GetInstance();
 
-                bool right = await db.CheckPermission(authorId, GROUP_ALL_PERMISSION);
+                bool right = await db.CheckPermission(authorId, GROUP_PERMISSION);
                 if (right)
                 {
                     parameters.Add("@ID", id);
@@ -152,7 +153,7 @@ namespace ElJournal.Controllers
             try
             {
                 DB db = DB.GetInstance();
-                bool right = await db.CheckPermission(authorId, GROUP_ALL_PERMISSION);
+                bool right = await db.CheckPermission(authorId, GROUP_COMMON_PERMISSION);
                 if (right)
                 {
                     parameters.Add("@ID", id);
