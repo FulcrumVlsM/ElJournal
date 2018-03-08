@@ -12,6 +12,7 @@ using ElJournal.Models;
 
 namespace ElJournal.Controllers
 {
+    //develop: Elena
     public class DepartmentsController : ApiController
     {
         // GET: api/Departments

@@ -22,6 +22,7 @@ namespace ElJournal.Models
     {
         public const string PERMISSION_ERROR = "You don't have permission for this operation";
         public const string INCORRECT_REQUEST_DATA = "Incorrect request data";
-        public const string WAIT_YOUR_TIME = "the next request will be available in 10 minutes";
+        public const string WAIT_YOUR_TIME = "the next request will be available in {0} minutes";
+        public const string UNKNOWN_ERROR = "Unknown error";
     }
 }

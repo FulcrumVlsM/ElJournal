@@ -223,6 +223,7 @@
     <Compile Include="Controllers\MessagesController.cs" />
     <Compile Include="Controllers\PeopleController.cs" />
     <Compile Include="Controllers\ScheduleController.cs" />
+    <Compile Include="Controllers\SemesterController.cs" />
     <Compile Include="Controllers\StudentsController.cs" />
     <Compile Include="Controllers\SubjectsController.cs" />
     <Compile Include="DBInteract\DB.cs" />
@@ -234,6 +235,7 @@
     <Compile Include="Models\DepartmentModels.cs" />
     <Compile Include="Models\GroupModels.cs" />
     <Compile Include="Models\IdentityModels.cs" />
+    <Compile Include="Models\LabWorkModels.cs" />
     <Compile Include="Models\PersonModels.cs" />
     <Compile Include="Models\FacultyModels.cs" />
     <Compile Include="Models\Response.cs" />
@@ -241,6 +243,7 @@
     <Compile Include="Models\StudentModels.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Providers\ApplicationOAuthProvider.cs" />
+    <Compile Include="Providers\NativeAuthProvider.cs" />
     <Compile Include="Results\ChallengeResult.cs" />
     <Compile Include="Startup.cs" />
   </ItemGroup>

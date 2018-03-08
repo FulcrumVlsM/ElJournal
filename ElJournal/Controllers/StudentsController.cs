@@ -13,15 +13,9 @@ namespace ElJournal.Controllers
     //develop: Mikhail
     public class StudentsController : ApiController
     {
-        //TODO: студент имеет следующие данные:
-        /*
-         * группа, в которой он учится (по таблице groups)
-         * семестры, в течение которых он учится в той группе (по таблице GroupsSemesters)
-         * ID (по таблице StudentsGroupSemesters)
-         * номер зачетной книжки (по таблице Persons)
-         */
-
-        private const string STUDENT_ALL_PERMISSION = "STUDENT_ALL_PERMISSION";
+        private static string table1 = "StudentsGroupsSemesters";
+        private static string table2 = "People";
+        private static string table3 = "Groups";
 
         // GET: api/Students
         public async Task<dynamic> Get()
@@ -32,21 +26,51 @@ namespace ElJournal.Controllers
         // GET: api/Students/5
         public async Task<dynamic> Get(string id)
         {
+            //общие данные пользователя
+            //группа
             Response response = new Response();
             Dictionary<string, string> parameters = new Dictionary<string, string>();
-            string sqlQuery = "select * from GetStudentInfo(@PersonID)";
+
+            //получение id пользователя
+            string sqlQuery1 = string.Format("select PersonID from {0} where ID=@studentId",table1);
+            //получение id ГруппыСеместр
+            string sqlQuery2 = string.Format("select GroupSemesterID from {0} where ID=@studentId", table1);
+            //получение данных пользователя
+            string sqlQuery3 = string.Format("select ID,name from {0} where ID=@personId", table2);
+            //получение данных группы
+            string sqlQuery4 = string.Format("select ID,name,info from {0} where ID=dbo.GetGroup(@groupSemester)",
+                table3);
 
             try
             {
                 DB db = DB.GetInstance();
-                parameters.Add("@PersonID", id);
-                response.Data = await db.ExecSelectQuery(sqlQuery, parameters);
+                parameters.Add("@studentId", id);
+                parameters.Add("@personId", await db.ExecuteScalarQuery(sqlQuery1, parameters));
+                parameters.Add("@groupSemester", await db.ExecuteScalarQuery(sqlQuery2, parameters));
+
+                var person = (await db.ExecSelectQuery(sqlQuery3, parameters))[0];
+                var group = (await db.ExecSelectQuery(sqlQuery4, parameters))[0];
+
+                response.Data = new //формирование результата запроса
+                {
+                    person = new Person //информация о пользователе
+                    {
+                        ID = person["ID"],
+                        name = person["name"]
+                    },
+                    group = new Group //информация о группе
+                    {
+                        ID = group["ID"],
+                        name = group["name"]
+                    }
+                };
                 response.Succesful = true;
             }
             catch(Exception e)
             {
                 response.Error = e.ToString();
                 response.message = e.Message;
+                //TODO: add log
             }
 
             return response;
@@ -56,22 +80,33 @@ namespace ElJournal.Controllers
         public async Task<dynamic> Post([FromBody]Student student)
         {
             Response response = new Response();//формат ответа
-            string sqlQuery = "insert into StudentsGroupsSemesters(PersonID,GroupSemesterID)" +
-                " values(@PersonID,@GroupSemesterID)";
+            string sqlQuery = String.Format("insert into {0}(PersonID,GroupSemesterID)" +
+                " values(@PersonID,@GroupSemesterID)", table1);
             string sqlQuery2 = "dbo.GetGroupSemester(@SemesterID, @GroupID)";
+            string sqlQuery3 = "select dbo.CheckPersonGroupFaculty(@person,@group)";
             Dictionary<string, string> parameters = new Dictionary<string, string>();
             string authorId = Request?.Headers?.Authorization?.Scheme; //id пользователя из заголовка http
 
             try
             {
                 DB db = DB.GetInstance();
-                bool right = await db.CheckPermission(authorId, STUDENT_ALL_PERMISSION);
-                if (right)
+                parameters.Add("@person", authorId);
+                parameters.Add("@group", student.groupId);
+
+                //проверка наличия необходимых разрешений
+                bool facultyRight = await db.CheckPermission(authorId, Permission.STUDENT_PERMISSION) ?
+                    (bool)await db.ExecuteScalarQuery(sqlQuery3, parameters) : false;
+                bool commonRight = await db.CheckPermission(authorId, Permission.STUDENT_COMMON_PERMISSION);
+                
+                if (commonRight || facultyRight)
                 {
+                    //определение id записи ГруппаСеместр (GroupSemesters)
+                    parameters.Clear();
                     parameters.Add("@SemesterID", student.semesterId);
                     parameters.Add("@GroupID", student.groupId);
                     string groupsSemester = await db.ExecuteScalarQuery(sqlQuery2, parameters);
 
+                    //добавление связи между человеком и группой
                     parameters.Clear();
                     parameters.Add("@PersonID", student.personId ?? String.Empty);
                     parameters.Add("@GroupSemesterID", groupsSemester ?? String.Empty);
@@ -96,55 +131,52 @@ namespace ElJournal.Controllers
             return response;
         }
 
-        // PUT: api/Students/5
-        public async Task<dynamic> Put(string id, [FromBody]Student student)
+
+        // DELETE: api/Students/5
+        public async Task<dynamic> Delete(string id)
         {
             Response response = new Response();//формат ответа
-            string sqlQuery = "dbo.UpdateStudentGroupSemester";
-            string sqlQuery2 = "dbo.GetGroupSemester(@SemesterID, @GroupID)";
+            string sqlQuery = String.Format("delete from {0} where ID=@id",table1);
+            string sqlQuery2 = "select dbo.CheckPersonStudentFaculty(@person,@student)";
             Dictionary<string, string> parameters = new Dictionary<string, string>();
             string authorId = Request?.Headers?.Authorization?.Scheme; //id пользователя из заголовка http
 
             try
             {
                 DB db = DB.GetInstance();
-                bool right = await db.CheckPermission(authorId, STUDENT_ALL_PERMISSION);
-                if (right)
-                {
-                    parameters.Add("@SemesterID", student.semesterId);
-                    parameters.Add("@GroupID", student.groupId);
-                    string groupsSemester = await db.ExecuteScalarQuery(sqlQuery2, parameters);
+                parameters.Add("@person", authorId);
+                parameters.Add("@student", id);
 
+                //проверка наличия необходимых разрешений
+                bool facultyRight = await db.CheckPermission(authorId, Permission.STUDENT_PERMISSION) ?
+                    (bool)await db.ExecuteScalarQuery(sqlQuery2, parameters) : false;
+                bool commonRight = await db.CheckPermission(authorId, Permission.STUDENT_COMMON_PERMISSION);
+
+                if (commonRight || facultyRight)
+                {
+                    //удаление отношения
                     parameters.Clear();
-                    parameters.Add("@ID", id);
-                    parameters.Add("@GroupSemesterID", groupsSemester);
-                    parameters.Add("@PersonID", student.personId);
-                    int res = db.ExecStoredProcedure(sqlQuery, parameters);
-                    if (res == 0)
+                    parameters.Add("@id", id ?? String.Empty);
+                    int res = db.ExecInsOrDelQuery(sqlQuery, parameters);
+                    if (res == 1)
                     {
                         response.Succesful = true;
-                        response.message = "Student was changed";
+                        response.message = "Student was deleted";
                     }
                     else
-                        response.message = "Student wasn't changed";
+                        response.message = "Student wasn't deleted";
                 }
                 else
                     response.Error = ErrorMessage.PERMISSION_ERROR;
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 response.Error = e.ToString();
                 response.message = e.Message;
+                //TODO: add log
             }
 
             return response;
-        }
-
-        // DELETE: api/Students/5
-        //TODO: метод еще не готов
-        public async Task<dynamic> Delete(string id)
-        {
-            return null;
         }
     }
 }

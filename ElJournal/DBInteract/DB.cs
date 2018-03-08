@@ -169,12 +169,12 @@ namespace ElJournal.DBInteract
                 return result;
             });
         }
-        public int ExecStoredProcedure(string procedureName, Dictionary<string,string> parameters)
+        public dynamic ExecStoredProcedure(string procedureName, Dictionary<string,string> parameters)
         {
             lock (locker)
             {
                 conn.Open();
-                int answer = default(int);
+                dynamic answer = default(dynamic);
 
                 try
                 {
@@ -188,7 +188,7 @@ namespace ElJournal.DBInteract
                     returnParam.Direction = ParameterDirection.ReturnValue;
 
                     query.ExecuteNonQuery();//выполнение запроса
-                    answer = (int)returnParam.Value;//получение выходного значения
+                    answer = returnParam.Value;//получение выходного значения
                 }
                 catch(SqlException e)
                 {
@@ -266,5 +266,51 @@ namespace ElJournal.DBInteract
                 return await ExecuteScalarQuery(sqlQuery, parameters);
             else return false;
         }
+
+        public List<Dictionary<string,dynamic>> Departments
+        {
+            get
+            {
+                return ExecSelectQuery("select * from Departments").Result;
+            }
+        }
+        public List<Dictionary<string,dynamic>> Faculties
+        {
+            get
+            {
+                return ExecSelectQuery("select * from Faculties").Result;
+            }
+        }
+        public List<Dictionary<string,dynamic>> Groups
+        {
+            get
+            {
+                return ExecSelectQuery("select * from Groups").Result;
+            }
+        }
+        public List<Dictionary<string, dynamic>> People
+        {
+            get
+            {
+                return ExecSelectQuery("select * from People").Result;
+            }
+        }
+    }
+
+    public static class Permission
+    {
+        public const string PERSON_COMMON_PERMISSION = "PERSON_COMMON_PERMISSION";
+
+        public const string FACULTY_PERMISSION = "FACULTY_PERMISSION";
+        public const string FACULTY_COMMON_PERMISSION = "FACULTY_COMMON_PERMISSION";
+
+        public const string STUDENT_COMMON_PERMISSION = "STUDENT_COMMON_PERMISSION";
+        public const string STUDENT_PERMISSION = "STUDENT_PERMISSION";
+
+        public const string LBWRK_COMMON_PERMISSION = "LBWRK_COMMON_PERMISSION";
+        public const string LBWRK_PERMISSION = "LBWRK_PERMISSION";
+        public const string LBWRK_READ_PERMISSION = "LBWRK_READ_PERMISSION";
+
+
     }
 }

@@ -8,19 +8,19 @@ using System.Web.Http;
 using ElJournal.Models;
 using ElJournal.DBInteract;
 using System.Web.Http.Controllers;
+using ElJournal.Providers;
 
 namespace ElJournal.Controllers
 {
     //develop: Mikhail
     public class PeopleController : ApiController
     {
-        private const string PERSON_COMMON_PERMISSION = "PERSON_COMMON_PERMISSION";
-        private const string PERSON_DEPARTMENT_PERMISSION = "PERSON_DEPARTMENT_PERMISSION";
-        private const string PERSON_FACULTY_PERMISSION = "PERSON_FACULTY_PERMISSION";
+        //private const string PERSON_COMMON_PERMISSION = "PERSON_COMMON_PERMISSION";
 
         //история запросов: ip клиента - время последнего запроса
         private static Dictionary<string, DateTime> _clientsHistory = new Dictionary<string, DateTime>(30);
         private static int _timeOut = 10; //промежуток отправки запросов
+        
 
 
         // GET: api/Persons
@@ -41,7 +41,7 @@ namespace ElJournal.Controllers
             {
                 DB db = DB.GetInstance();
                 string sqlQuery;
-                bool right = await db.CheckPermission(token, PERSON_COMMON_PERMISSION);//проверка прав пользователя
+                bool right = await db.CheckPermission(token, Permission.PERSON_COMMON_PERMISSION);//проверка прав пользователя
                 if (right)
                     sqlQuery = sqlQueryWithAuth;
                 else
@@ -78,7 +78,7 @@ namespace ElJournal.Controllers
             try
             {
                 DB db = DB.GetInstance();
-                bool right = await db.CheckPermission(token, PERSON_COMMON_PERMISSION);//авторизация пользователя
+                bool right = await db.CheckPermission(token, Permission.PERSON_COMMON_PERMISSION);//авторизация пользователя
                 string sqlQuery;
                 if (right) //если права имеются
                     sqlQuery = sqlQueryWithAuth;
@@ -102,9 +102,39 @@ namespace ElJournal.Controllers
         //TODO: метод еще пустой
         //GET: api/Persons?name=...
         //Authorization: token
-        public async Task<dynamic> Get([FromUri]string name,[FromUri]string faculty)
+        public async Task<dynamic> Get([FromUri]string name,[FromUri]int count=5)
         {
-            return null;
+            Response response = new Response();//формат ответа
+            Dictionary<string, string> parameters = new Dictionary<string, string>();//параметры sql запроса
+            string token = Request?.Headers?.Authorization?.Scheme; //id пользователя из заголовка http
+            string sqlQueryWithAuth = "select top @count " +
+                "* from dbo.GetPeopleForName(@regex)"; //запрос для авторизованного пользователя
+            string sqlQueryOutAuth = "select top @count ID name,info from" +
+                " dbo.GetPeopleForName(@regex)";//запрос для неавторизованного пользователя
+
+            try
+            {
+                DB db = DB.GetInstance();
+                bool right = await db.CheckPermission(token, Permission.PERSON_COMMON_PERMISSION);//авторизация пользователя
+                string sqlQuery;
+                if (right) //если права имеются
+                    sqlQuery = sqlQueryWithAuth;
+                else
+                    sqlQuery = sqlQueryOutAuth;
+
+                parameters.Add("@regex", name);
+                parameters.Add("@count", count.ToString());
+                response.Data = await db.ExecSelectQuery(sqlQuery, parameters);//запрос в бд
+                response.Succesful = true;
+            }
+            catch (Exception e)
+            {
+                response.Error = e.ToString();
+                response.message = e.Message;
+                //TODO: add log
+            }
+
+            return response;
         }
 
         // POST: api/Persons
@@ -114,13 +144,15 @@ namespace ElJournal.Controllers
             Response response = new Response(); //формат ответа
             string token = Request?.Headers?.Authorization?.Scheme; //id пользователя из заголовка http
             var parameters = new Dictionary<string, string>();
+
+            //
             string sqlAddQuery = "dbo.AddPerson";
             string sqlGetId = "select top 1 ID from Persons where ID=@name and passport_id=@passport_id";
 
             try
             {
                 DB db = DB.GetInstance();
-                bool right = await db.CheckPermission(token, PERSON_COMMON_PERMISSION);//авторизация пользователя
+                bool right = await db.CheckPermission(token, Permission.PERSON_COMMON_PERMISSION);//авторизация пользователя
                 if (right)
                 {
                     parameters.Add("@RolesID", person.RolesId); //добавление параметров к запросу
@@ -166,7 +198,7 @@ namespace ElJournal.Controllers
             try
             {
                 DB db = DB.GetInstance();
-                bool right = await db.CheckPermission(token, PERSON_COMMON_PERMISSION);
+                bool right = await db.CheckPermission(token, Permission.PERSON_COMMON_PERMISSION);
                 if (right)//если у пользователя есть права на операцию
                 {
                     parameters.Add("@ID", id);
@@ -210,7 +242,7 @@ namespace ElJournal.Controllers
             try
             {
                 DB db = DB.GetInstance();
-                bool right = await db.CheckPermission(token, PERSON_COMMON_PERMISSION);
+                bool right = await db.CheckPermission(token, Permission.PERSON_COMMON_PERMISSION);
                 if (right)
                 {
                     parameters.Add("@id", id);//добавление параметра к запросу
@@ -266,12 +298,6 @@ namespace ElJournal.Controllers
                 _clientsHistory.Add(clientIP, DateTime.Now);
             }
             return true;
-        }
-        
-        private bool checkFacPermission(string token, string personId)
-        {
-            //TODO: метод еще пустой
-            return false;
         }
     }
 }

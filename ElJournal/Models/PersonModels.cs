@@ -7,6 +7,7 @@ namespace ElJournal.Models
 {
     public class Person
     {
+        public string ID { get; set; }
         public string name { get; set; }
         public string student_id { get; set; }
         public string passport_id { get; set; }
