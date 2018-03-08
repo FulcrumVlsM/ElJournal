@@ -19,13 +19,14 @@ namespace ElJournal.Controllers
         public async Task<dynamic> Get()
         {
             Response response = new Response();
-            string sqlQuery = "select * from Groups";
-
             try
             {
                 DB db = DB.GetInstance();
-                response.Data = await db.ExecSelectQuery(sqlQuery);
-                response.Succesful = true;
+                await Task.Factory.StartNew(() =>
+                {
+                    response.Data = db.Groups;
+                    response.Succesful = true;
+                });
             }
             catch(Exception e)
             {
@@ -41,15 +42,15 @@ namespace ElJournal.Controllers
         public async Task<dynamic> Get(string id)
         {
             Response response = new Response();
-            string sqlQuery = "select * from Groups where ID=@id";
-            Dictionary<string, string> parameters = new Dictionary<string, string>();
 
             try
             {
                 DB db = DB.GetInstance();
-                parameters.Add("@id", id);
-                response.Data = await db.ExecSelectQuery(sqlQuery, parameters);
-                response.Succesful = true;
+                await Task.Factory.StartNew(() =>
+                 {
+                     response.Data = db.Groups.Where(x => x["ID"].Equals(id));
+                     response.Succesful = true;
+                 });
             }
             catch(Exception e)
             {

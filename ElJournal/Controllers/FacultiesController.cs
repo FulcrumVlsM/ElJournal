@@ -24,20 +24,21 @@ namespace ElJournal.Controllers
         public async Task<dynamic> Get()
         {
             Response response = new Response();//формат ответа
-            string sqlQuery = "select * from Faculties";
-
-            try
+            await Task.Run(() =>
             {
-                DB db = DB.GetInstance();
-                response.Succesful = true;
-                response.Data = await db.ExecSelectQuery(sqlQuery);//запроск БД
-            }
-            catch(Exception e)
-            {
-                response.Error = e.ToString();
-                response.message = e.Message;
-                //TODO: add log
-            }
+                try
+                {
+                    DB db = DB.GetInstance();
+                    response.Data = db.Faculties;//запроск БД
+                    response.Succesful = true;
+                }
+                catch (Exception e)
+                {
+                    response.Error = e.ToString();
+                    response.message = e.Message;
+                    //TODO: add log
+                }
+            });
             return response;
         }
 
@@ -45,23 +46,21 @@ namespace ElJournal.Controllers
         public async Task<dynamic> Get(string id)
         {
             Response response = new Response();//формат ответа
-            string sqlQuery = "select * from Faculties where ID=@id";
-            Dictionary<string, string> parameters = new Dictionary<string, string>();
-
-            try
+            await Task.Run(() =>
             {
-                DB db = DB.GetInstance();
-                parameters.Add("@id", id);//добавление параметра к запросу
-                response.Succesful = true;
-                response.Data = await db.ExecSelectQuery(sqlQuery, parameters);
-            }
-            catch(Exception e)
-            {
-                response.Error = e.ToString();
-                response.message = e.Message;
-                //TODO: add log
-            }
-
+                try
+                {
+                    DB db = DB.GetInstance();
+                    response.Data = db.Faculties.Where(x => x["ID"].Equals(id));
+                    response.Succesful = true;
+                }
+                catch (Exception e)
+                {
+                    response.Error = e.ToString();
+                    response.message = e.Message;
+                    //TODO: add log
+                }
+            });
             return response;
         }
         

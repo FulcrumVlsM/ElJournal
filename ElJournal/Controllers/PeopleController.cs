@@ -8,6 +8,7 @@ using System.Web.Http;
 using ElJournal.Models;
 using ElJournal.DBInteract;
 using System.Web.Http.Controllers;
+using ElJournal.Providers;
 
 namespace ElJournal.Controllers
 {
@@ -19,6 +20,7 @@ namespace ElJournal.Controllers
         //история запросов: ip клиента - время последнего запроса
         private static Dictionary<string, DateTime> _clientsHistory = new Dictionary<string, DateTime>(30);
         private static int _timeOut = 10; //промежуток отправки запросов
+        
 
 
         // GET: api/Persons

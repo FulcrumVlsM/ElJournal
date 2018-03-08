@@ -266,6 +266,35 @@ namespace ElJournal.DBInteract
                 return await ExecuteScalarQuery(sqlQuery, parameters);
             else return false;
         }
+
+        public List<Dictionary<string,dynamic>> Departments
+        {
+            get
+            {
+                return ExecSelectQuery("select * from Departments").Result;
+            }
+        }
+        public List<Dictionary<string,dynamic>> Faculties
+        {
+            get
+            {
+                return ExecSelectQuery("select * from Faculties").Result;
+            }
+        }
+        public List<Dictionary<string,dynamic>> Groups
+        {
+            get
+            {
+                return ExecSelectQuery("select * from Groups").Result;
+            }
+        }
+        public List<Dictionary<string, dynamic>> People
+        {
+            get
+            {
+                return ExecSelectQuery("select * from People").Result;
+            }
+        }
     }
 
     public static class Permission
