@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Web.Http;
 using ElJournal.Models;
 using ElJournal.DBInteract;
+using ElJournal.Providers;
 
 namespace ElJournal.Controllers
 {
@@ -53,6 +54,7 @@ namespace ElJournal.Controllers
         }
 
 
+
         //возвращает список лабораторных по указанному предмету
         [HttpGet]
         [Route("api/LabWork/plan/{subjectId}")]
@@ -79,6 +81,7 @@ namespace ElJournal.Controllers
 
             return response;
         }
+
 
 
         //возвращает список лабораторных, выполненных студентом по предмету
@@ -108,6 +111,7 @@ namespace ElJournal.Controllers
 
             return response;
         }
+
 
 
         // GET: api/LabWork/5
@@ -145,6 +149,7 @@ namespace ElJournal.Controllers
         }
 
 
+
         // POST: api/LabWork/plan/5/5
         // добавление лабораторной работы в план по предмету
         [HttpPost]
@@ -153,26 +158,26 @@ namespace ElJournal.Controllers
         {
             Response response = new Response();
             string token = Request?.Headers?.Authorization?.Scheme;
+            NativeAuthProvider authProvider = NativeAuthProvider.GetInstance(token);
             var parameters = new Dictionary<string, string>();
-            string sqlQuery1 = "insert into LabWorksPlan(SubjectGroupSemesterID,LabWorkID) " +
+            string sqlQuery = "insert into LabWorksPlan(SubjectGroupSemesterID,LabWorkID) " +
                 "values (@subjectId,@workId)";
-            string sqlQuery2 = "select * from dbo.CheckTeach(@userToken,@subjectId)";
 
             try
             {
                 DB db = DB.GetInstance();
 
-                parameters.Add("@userToken", token);
                 parameters.Add("@subjectId", subjectGroupId);
                 parameters.Add("@workId", workId);
 
-                bool commonRight = await db.CheckPermission(token, Permission.LBWRK_COMMON_PERMISSION);
-                bool subjectRight = await db.CheckPermission(token, Permission.LBWRK_PERMISSION) ?
-                    await db.ExecuteScalarQuery(sqlQuery2, parameters) : false;
+
+                bool commonRight = authProvider.CheckPermission(Permission.LBWRK_COMMON_PERMISSION);
+                bool subjectRight = authProvider.CheckPermission(Permission.LBWRK_PERMISSION) ?
+                    authProvider.Subjects.Contains(subjectGroupId) : false;
 
                 if (commonRight || subjectRight)
                 {
-                    int result = db.ExecInsOrDelQuery(sqlQuery1, parameters);
+                    int result = db.ExecInsOrDelQuery(sqlQuery, parameters);//отправка запроса в бд
                     if (result == 1)
                         response.Succesful = true;
                     else
@@ -193,6 +198,7 @@ namespace ElJournal.Controllers
 
             return response;
         }
+
 
 
         // POST: api/LabWork/exec/5/5?state=true
@@ -283,6 +289,7 @@ namespace ElJournal.Controllers
         }
 
 
+
         // POST: api/LabWork
         // добавление лабораторной работы
         // TODO: еще нет работы с файлами
@@ -330,6 +337,7 @@ namespace ElJournal.Controllers
         }
 
 
+
         // PUT: api/LabWork/5
         // изменение лабораторной работы
         public async Task<dynamic> Put(string id, [FromBody]LabWork lab)
@@ -373,6 +381,7 @@ namespace ElJournal.Controllers
 
             return response;
         }
+
 
 
         // DELETE: api/LabWork/plan/5
@@ -436,6 +445,7 @@ namespace ElJournal.Controllers
         }
 
 
+
         // DELETE: api/LabWork/5
         // удаление лабораторной работы
         public async Task<dynamic> Delete(string id)
@@ -477,5 +487,6 @@ namespace ElJournal.Controllers
 
             return response;
         }
+
     }
 }

@@ -12,6 +12,20 @@ namespace ElJournal.Providers
         {
             Token = token;
         }
+        public static NativeAuthProvider GetInstance(string token)
+        {
+            if (string.IsNullOrEmpty(token))
+                return null;
+            else
+            {
+                DB db = DB.GetInstance();
+                string sqlQuery = "dbo.CheckToken(@token)";
+                if ((bool)db.ExecuteScalarQuery(sqlQuery).Result)
+                    return new NativeAuthProvider(token);
+                else
+                    return null;
+            }
+        }
 
         public List<string> Permissions
         {
@@ -28,37 +42,49 @@ namespace ElJournal.Providers
                 return permissions;
             }
         }
-        public List<Dictionary<string,dynamic>> Subjects
+        public List<string> Subjects
         {
             get
             {
                 DB db = DB.GetInstance();
-                string sqlQuery = " select * from dbo.GetTeacherSubjects(@personId)";
+                string sqlQuery = " select ID from dbo.GetTeacherSubjects(@personId)";
                 var parameters = new Dictionary<string, string>();
                 parameters.Add("@personId", PersonId);
-                return db.ExecSelectQuery(sqlQuery, parameters).Result;
+                var list = db.ExecSelectQuery(sqlQuery, parameters).Result;
+                var subjects = new List<string>();
+                foreach (var item in list)
+                    subjects.Add(item["ID"]);
+                return subjects;
             }
         }
-        public List<Dictionary<string,dynamic>> Faculties
+        public List<string> Faculties
         {
             get
             {
                 DB db = DB.GetInstance();
-                string sqlQuery = " select * from dbo.PersonFaculty(@personId)";
+                string sqlQuery = " select ID from dbo.PersonFaculty(@personId)";
                 var parameters = new Dictionary<string, string>();
                 parameters.Add("@personId", PersonId);
-                return db.ExecSelectQuery(sqlQuery, parameters).Result;
+                var list = db.ExecSelectQuery(sqlQuery, parameters).Result;
+                var faculties = new List<string>();
+                foreach (var item in list)
+                    faculties.Add(item["ID"]);
+                return faculties;
             }
         }
-        public List<Dictionary<string, dynamic>> Departments
+        public List<string> Departments
         {
             get
             {
                 DB db = DB.GetInstance();
-                string sqlQuery = " select * from dbo.PersonDepartment(@personId)";
+                string sqlQuery = " select ID from dbo.PersonDepartment(@personId)";
                 var parameters = new Dictionary<string, string>();
                 parameters.Add("@personId", PersonId);
-                return db.ExecSelectQuery(sqlQuery, parameters).Result;
+                var list = db.ExecSelectQuery(sqlQuery, parameters).Result;
+                var departments = new List<string>();
+                foreach (var item in list)
+                    departments.Add(item["ID"]);
+                return departments;
             }
         }
         public string Token
@@ -80,6 +106,11 @@ namespace ElJournal.Providers
                 var people = (List <Dictionary<string,dynamic>>)db.People.Where(x => x["token"] = _token);
                 return (people[0])["ID"];
             }
+        }
+
+        public bool CheckPermission(string permission)
+        {
+            return Permissions.Contains(permission);
         }
     }
 }
