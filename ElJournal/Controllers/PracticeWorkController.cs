@@ -4,38 +4,34 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Web.Http;
-using ElJournal.DBInteract;
-using System.Threading.Tasks;
 
 namespace ElJournal.Controllers
 {
-    public class AlertsController : ApiController
+    public class PracticeWorkController : ApiController
     {
-        // GET: api/Alerts
-        public async Task<dynamic> Get()
+        // GET: api/PracticeWork
+        public IEnumerable<string> Get()
         {
-            DB db = DB.GetInstance();
-            return await db.ExecSelectQueryAsync("select * from Events");
-
+            return new string[] { "value1", "value2" };
         }
 
-        // GET: api/Alerts/5
+        // GET: api/PracticeWork/5
         public string Get(int id)
         {
             return "value";
         }
 
-        // POST: api/Alerts
+        // POST: api/PracticeWork
         public void Post([FromBody]string value)
         {
         }
 
-        // PUT: api/Alerts/5
+        // PUT: api/PracticeWork/5
         public void Put(int id, [FromBody]string value)
         {
         }
 
-        // DELETE: api/Alerts/5
+        // DELETE: api/PracticeWork/5
         public void Delete(int id)
         {
         }

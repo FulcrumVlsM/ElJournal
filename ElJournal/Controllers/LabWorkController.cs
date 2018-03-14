@@ -37,7 +37,7 @@ namespace ElJournal.Controllers
                 bool right = await db.CheckPermission(token, Permission.LBWRK_COMMON_PERMISSION);
                 if (right)
                 {
-                    response.Data = await db.ExecSelectQuery(sqlQuery);
+                    response.Data = await db.ExecSelectQueryAsync(sqlQuery);
                     response.Succesful = true;
                 }
                 else
@@ -69,7 +69,7 @@ namespace ElJournal.Controllers
                 DB db = DB.GetInstance();
 
                 parameters.Add("@subjectId", subjectId);
-                response.Data = await db.ExecSelectQuery(sqlQuery, parameters);
+                response.Data = await db.ExecSelectQueryAsync(sqlQuery, parameters);
                 response.Succesful = true;
             }
             catch(Exception e)
@@ -99,7 +99,7 @@ namespace ElJournal.Controllers
 
                 parameters.Add("@studentId", studentId);
                 parameters.Add("@subjectId", subjectId);
-                response.Data = await db.ExecSelectQuery(sqlQuery, parameters);
+                response.Data = await db.ExecSelectQueryAsync(sqlQuery, parameters);
                 response.Succesful = true;
             }
             catch (Exception e)
@@ -132,7 +132,7 @@ namespace ElJournal.Controllers
                 if (right)
                 {
                     parameters.Add("@id", id);
-                    response.Data = (await db.ExecSelectQuery(sqlQuery, parameters))[0];
+                    response.Data = (await db.ExecSelectQueryAsync(sqlQuery, parameters))[0];
                     response.Succesful = true;
                 }
                 else
@@ -170,14 +170,16 @@ namespace ElJournal.Controllers
                 parameters.Add("@subjectId", subjectGroupId);
                 parameters.Add("@workId", workId);
 
-
-                bool commonRight = authProvider.CheckPermission(Permission.LBWRK_COMMON_PERMISSION);
-                bool subjectRight = authProvider.CheckPermission(Permission.LBWRK_PERMISSION) ?
-                    authProvider.Subjects.Contains(subjectGroupId) : false;
+                //Получение прав пользователя
+                bool commonRight = default(bool);
+                bool subjectRight = default(bool);
+                Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.LBWRK_COMMON_PERMISSION),
+                    () => subjectRight = authProvider.CheckPermission(Permission.LBWRK_PERMISSION) ?
+                    authProvider.Subjects.Contains(subjectGroupId) : false);
 
                 if (commonRight || subjectRight)
                 {
-                    int result = db.ExecInsOrDelQuery(sqlQuery, parameters);//отправка запроса в бд
+                    int result = await db.ExecInsOrDelQueryAsync(sqlQuery, parameters);//отправка запроса в бд
                     if (result == 1)
                         response.Succesful = true;
                     else
@@ -203,6 +205,7 @@ namespace ElJournal.Controllers
 
         // POST: api/LabWork/exec/5/5?state=true
         // отметка о выполнении лаб. работы (параметр state)
+        // TODO: Код метода ни о чем. Переделать.
         [HttpPost]
         [Route("api/LabWork/exec/{studentId}/{subjWorkId}")]
         public async Task<dynamic> PostExec(string studentId, string subjWorkId, 
@@ -210,10 +213,11 @@ namespace ElJournal.Controllers
         {
             Response response = new Response();
             string token = Request?.Headers?.Authorization?.Scheme;
+            NativeAuthProvider authProvider = NativeAuthProvider.GetInstance(token);
             var parameters = new Dictionary<string, string>();
             string sqlQuery1 = "select * from dbo.CheckStudentLabWorkPlan(@studentId,@planId)";
-            string sqlQuery2 = "select SubjectGroupSemesterID from LabWorksPlan where ID=@planId";
-            string sqlQuery3 = "select * from dbo.CheckTeach(@token,@subjectId)";
+            //string sqlQuery2 = "select SubjectGroupSemesterID from LabWorksPlan where ID=@planId";
+            //string sqlQuery3 = "select * from dbo.CheckTeach(@token,@subjectId)";
             string sqlQuery4 = "insert into LabWorksExecution(LabWorkPlanID,StudentGroupSemesterID)" +
                 " values(@planId,@studentId)";
             string sqlQuery5 = "delete from LabWorksExecution where LabWorkPlanID=@planId " +
@@ -226,28 +230,24 @@ namespace ElJournal.Controllers
             try
             {
                 DB db = DB.GetInstance();
-                bool commonRight=default(bool), teacherRight=default(bool), trueData=default(bool);
 
-                Task[] tasks = new Task[3]
-                {
-                    new Task(async () => commonRight=await db.CheckPermission(token,Permission.LBWRK_COMMON_PERMISSION)),
-                    new Task(async () => trueData = await db.ExecuteScalarQuery(sqlQuery1,parameters)),
-                    new Task(async () =>
+                //Получение прав пользователя и проверка корректности входных данных
+                bool commonRight=default(bool), teacherRight=default(bool), trueData=default(bool);
+                Parallel.Invoke(
+                    () => commonRight = authProvider.CheckPermission(Permission.LBWRK_COMMON_PERMISSION),
+                    async () => trueData = await db.ExecuteScalarQueryAsync(sqlQuery1, parameters),
+                    async () =>
                     {
-                        parameters.Add("@subjectId",await db.ExecuteScalarQuery(sqlQuery2,parameters));
-                        teacherRight = await db.CheckPermission(token,Permission.LBWRK_PERMISSION) ?
-                             await db.ExecuteScalarQuery(sqlQuery3,parameters) : false;
-                    })
-                };
-                foreach (var task in tasks)
-                    task.Start();
-                Task.WaitAll(tasks);
+                        string subjectId = await getSubject(subjWorkId);
+                        teacherRight = authProvider.CheckPermission(Permission.LBWRK_PERMISSION) ?
+                             authProvider.Subjects.Contains(subjectId) : false;
+                    });
 
                 if(trueData && (commonRight || teacherRight))
                 {
-                    if (state)
+                    if (state) //отмечается выполненная работа
                     {
-                        int result = db.ExecInsOrDelQuery(sqlQuery4, parameters);
+                        int result = await db.ExecInsOrDelQueryAsync(sqlQuery4, parameters);
                         if (result == 1)
                             response.Succesful = true;
                         else
@@ -257,7 +257,7 @@ namespace ElJournal.Controllers
                                 "the log and send it to the developers";
                         }
                     }
-                    else
+                    else //снятие отметки о выполнении
                     {
                         int result = db.ExecInsOrDelQuery(sqlQuery5, parameters);
                         if (result == 1)
@@ -344,6 +344,7 @@ namespace ElJournal.Controllers
         {
             Response response = new Response();
             string token = Request?.Headers?.Authorization?.Scheme;
+            NativeAuthProvider authProvider = NativeAuthProvider.GetInstance(token);
             var parameters = new Dictionary<string, string>();
             string sqlQuery = "dbo.UpdateLabWork";
 
@@ -355,11 +356,11 @@ namespace ElJournal.Controllers
                 parameters.Add("@name", lab.Name);
                 parameters.Add("@advanced", lab.Advanced);
 
-                bool right = await db.CheckPermission(token, Permission.LBWRK_COMMON_PERMISSION) ||
-                    await db.CheckPermission(token, Permission.LBWRK_PERMISSION);
+                bool right = authProvider.CheckPermission(Permission.LBWRK_COMMON_PERMISSION) ||
+                    authProvider.CheckPermission(Permission.LBWRK_PERMISSION);
                 if (right)
                 {
-                    int result = db.ExecStoredProcedure(sqlQuery, parameters);
+                    int result = await db.ExecStoredProcedureAsync(sqlQuery, parameters);
                     if (result == 0)
                         response.Succesful = true;
                     else
@@ -388,14 +389,15 @@ namespace ElJournal.Controllers
         // удаление лабораторной работы из плана
         [HttpDelete]
         [Route("api/LabWork/plan/{id}")]
-        public async Task<dynamic> DeletePlan(string id)
+        public dynamic DeletePlan(string id)
         {
             Response response = new Response();
             string token = Request?.Headers?.Authorization?.Scheme;
+            NativeAuthProvider authProvider = NativeAuthProvider.GetInstance(token);
             var parameters = new Dictionary<string, string>();
-            string sqlQuery1 = "delete from LabWorksPlan where ID=@ID";
-            string sqlQuery2 = "select SubjectGroupSemesterID from LabWorksPlan where ID=@ID";
-            string sqlQuery3 = "select * from dbo.CheckTeach(@token,@subjectId)";
+            string sqlQuery = "delete from LabWorksPlan where ID=@ID";
+            //string sqlQuery2 = "select SubjectGroupSemesterID from LabWorksPlan where ID=@ID";
+            //string sqlQuery3 = "select * from dbo.CheckTeach(@token,@subjectId)";
 
             parameters.Add("@ID", id);
             parameters.Add("@token", token);
@@ -404,26 +406,23 @@ namespace ElJournal.Controllers
             {
                 DB db = DB.GetInstance();
 
+                //проверка прав пользователя
                 bool commonRight = default(bool), teacherRight = default(bool);
-                Task[] tasks = new Task[2]
-                {
-                    new Task(async () => commonRight = await db.CheckPermission(token, Permission.LBWRK_COMMON_PERMISSION)),
-                    new Task(async () =>
+                Parallel.Invoke(
+                    async () => commonRight = await db.CheckPermission(token, Permission.LBWRK_COMMON_PERMISSION),
+                    async () =>
                     {
-                        parameters.Add("@subjectId", await db.ExecuteScalarQuery(sqlQuery2, parameters));
-                        teacherRight = await db.CheckPermission(token, Permission.LBWRK_PERMISSION) ?
-                             await db.ExecuteScalarQuery(sqlQuery3, parameters) : false;
-                    })
-                };
-                foreach (var task in tasks)
-                    task.Start();
+                        string subjectId = await getSubject(id);
+                        teacherRight = authProvider.CheckPermission(Permission.LBWRK_PERMISSION) ?
+                             authProvider.Subjects.Contains(subjectId) : false;
+                    });
 
-                Task.WaitAll(tasks);
+
                 if (commonRight || teacherRight)
                 {
-                    int result = db.ExecInsOrDelQuery(sqlQuery1, parameters);
+                    int result = db.ExecInsOrDelQuery(sqlQuery, parameters); //выполнение запроса в бд
                     if (result == 1)
-                        response.Succesful = true;
+                        response.Succesful = true; //1 будет возвращено при удалении 1 записи (0 - при отсутствии удаленных записей)
                     else
                     {
                         //TODO: add log
@@ -448,10 +447,11 @@ namespace ElJournal.Controllers
 
         // DELETE: api/LabWork/5
         // удаление лабораторной работы
-        public async Task<dynamic> Delete(string id)
+        public dynamic Delete(string id)
         {
             Response response = new Response();
             string token = Request?.Headers?.Authorization?.Scheme;
+            NativeAuthProvider authProvider = NativeAuthProvider.GetInstance(token);
             var parameters = new Dictionary<string, string>();
             string sqlQuery = "delete from LabWorks where ID=@ID";
 
@@ -461,11 +461,11 @@ namespace ElJournal.Controllers
             {
                 DB db = DB.GetInstance();
 
-                bool right = await db.CheckPermission(token, Permission.LBWRK_COMMON_PERMISSION);
+                bool right = authProvider.CheckPermission(Permission.LBWRK_COMMON_PERMISSION);
                 
                 if (right)
                 {
-                    int result = db.ExecInsOrDelQuery(sqlQuery, parameters);
+                    int result = db.ExecInsOrDelQuery(sqlQuery, parameters);//выполнение запроса к БД
                     if (result == 1)
                         response.Succesful = true;
                     else
@@ -488,5 +488,15 @@ namespace ElJournal.Controllers
             return response;
         }
 
+
+        // получает предмет по лабораторной работе из плана
+        private async Task<string> getSubject(string labWorkPlan)
+        {
+            string sqlQuery = "select SubjectGroupSemesterID from LabWorksPlan where ID=@labWorkPlan";
+            var parameters = new Dictionary<string, string>();
+            parameters.Add("@labWorkPlan", labWorkPlan);
+            DB db = DB.GetInstance();
+            return await db.ExecuteScalarQueryAsync(sqlQuery, parameters);
+        }
     }
 }

@@ -90,7 +90,7 @@ namespace ElJournal.Controllers
                     {
                         response.Succesful = true;
                         response.message = "New faculty was added";
-                        response.Data = new { ID = db.ExecuteScalarQuery(sqlSQuery,parameters) };
+                        response.Data = new { ID = db.ExecuteScalarQueryAsync(sqlSQuery,parameters) };
                     }
                     else
                         response.message = "Faculty not added";

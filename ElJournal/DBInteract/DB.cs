@@ -37,7 +37,12 @@ namespace ElJournal.DBInteract
         }
 
 
-        public Task<List<Dictionary<string, dynamic>>> ExecSelectQuery(string sqlQuery)
+        /// <summary>
+        /// Выполняет асинхронный запрос на выборку к БД, выполняя указанный sql запрос
+        /// </summary>
+        /// <param name="sqlQuery">sql запрос</param>
+        /// <returns>Коллекция из Dictionary, ключи соответствуют полям таблицы из БД</returns>
+        public Task<List<Dictionary<string, dynamic>>> ExecSelectQueryAsync(string sqlQuery)
         {
             if (sqlQuery.Contains("insert") || sqlQuery.Contains("delete"))
                 throw new FormatException("Incorrect sql query for this method");
@@ -73,7 +78,15 @@ namespace ElJournal.DBInteract
                 return set;
             });
         }
-        public Task<List<Dictionary<string, dynamic>>> ExecSelectQuery(string sqlQuery, Dictionary<string, string> parameters)
+
+
+        /// <summary>
+        /// Выполняет асинхронный запрос на выборку к БД, выполняя указанный sql запрос
+        /// </summary>
+        /// <param name="sqlQuery">sql запрос</param>
+        /// <param name="parameters">дополнительные параметры, представленные в запросе как @value</param>
+        /// <returns>Коллекция из Dictionary, ключи соответствуют полям таблицы из БД</returns>
+        public Task<List<Dictionary<string, dynamic>>> ExecSelectQueryAsync(string sqlQuery, Dictionary<string, string> parameters)
         {
             if (sqlQuery.Contains("insert") || sqlQuery.Contains("delete"))
                 throw new FormatException("Incorrect sql query for this method");
@@ -111,7 +124,14 @@ namespace ElJournal.DBInteract
                 return set;
             });
         }
-        public Task<dynamic> ExecuteScalarQuery(string sqlQuery)
+
+
+        /// <summary>
+        /// Выполняет асинхронный запрос на получение скалярного значения из БД.
+        /// </summary>
+        /// <param name="sqlQuery">sql запрос</param>
+        /// <returns>скалярное значение произвольного типа</returns>
+        public Task<dynamic> ExecuteScalarQueryAsync(string sqlQuery)
         {
             if (sqlQuery.Contains("insert") || sqlQuery.Contains("delete"))//запрет на инструкции добавления и удаления
                 throw new FormatException("Incorrect sql query for this method");
@@ -138,7 +158,15 @@ namespace ElJournal.DBInteract
                 return result;
             });
         }
-        public Task<dynamic> ExecuteScalarQuery(string sqlQuery, Dictionary<string,string> parameters)
+
+
+        /// <summary>
+        /// Выполняет асинхронный запрос на получение скалярного значения из БД.
+        /// </summary>
+        /// <param name="sqlQuery">sql запрос</param>
+        /// <param name="parameters">дополнительные параметры, представленные в запросе как @value</param>
+        /// <returns>скалярное значение произвольного типа</returns>
+        public Task<dynamic> ExecuteScalarQueryAsync(string sqlQuery, Dictionary<string,string> parameters)
         {
             if (sqlQuery.Contains("insert") || sqlQuery.Contains("delete"))//запрет на операции добавления и удаления
                 throw new FormatException("Incorrect sql query for this method");
@@ -169,6 +197,14 @@ namespace ElJournal.DBInteract
                 return result;
             });
         }
+
+
+        /// <summary>
+        /// Выполняет запрос на выполнение хранимой процедуры
+        /// </summary>
+        /// <param name="procedureName">имя хранимой процедуры</param>
+        /// <param name="parameters">параметры хранимой процедуры</param>
+        /// <returns>Значение, возвращаемое хранимой процедурой</returns>
         public dynamic ExecStoredProcedure(string procedureName, Dictionary<string,string> parameters)
         {
             lock (locker)
@@ -201,6 +237,51 @@ namespace ElJournal.DBInteract
                 return answer;
             }
         }
+
+
+        /// <summary>
+        /// Выполняет запрос на выполнение хранимой процедуры в асинхронном режиме.
+        /// Не рекомендуется для хранимых процедур с наличием Delete запросов.
+        /// </summary>
+        /// <param name="procedureName">имя хранимых процедуры</param>
+        /// <param name="parameters">параметры хранимой процедуры</param>
+        /// <returns>Значение, возвращаемое хранимой процедурой</returns>
+        public async Task<dynamic> ExecStoredProcedureAsync(string procedureName, Dictionary<string,string> parameters)
+        {
+            conn.Open();
+            dynamic answer = default(dynamic);
+
+            try
+            {
+                SqlCommand query = new SqlCommand(procedureName, conn);//формирование запроса
+                query.CommandType = System.Data.CommandType.StoredProcedure;
+
+                foreach (var obj in parameters)//добавление параметров к запросу
+                    query.Parameters.Add(new SqlParameter(obj.Key, obj.Value));
+
+                var returnParam = query.Parameters.Add("@ReturnVal", SqlDbType.Int);//выходноу значение
+                returnParam.Direction = ParameterDirection.ReturnValue;
+
+                await query.ExecuteNonQueryAsync();//выполнение запроса
+                answer = returnParam.Value;//получение выходного значения
+            }
+            catch (SqlException e)
+            {
+                //TODO: add log
+                conn.Close();
+                throw e;
+            }
+
+            conn.Close();
+            return answer;
+        }
+
+
+        /// <summary>
+        /// Выполняет запросы Insert, Update, Delete к базе данных
+        /// </summary>
+        /// <param name="sqlQuery">sql запрос</param>
+        /// <returns>результат, возвращаемый хранимой процедурой</returns>
         public int ExecInsOrDelQuery(string sqlQuery)
         {
             if(sqlQuery.Contains("select"))//запрет на выборку (select)
@@ -226,6 +307,14 @@ namespace ElJournal.DBInteract
                 return result;
             }
         }
+
+
+        /// <summary>
+        /// Выполняет запросы Insert, Update, Delete к базе данных
+        /// </summary>
+        /// <param name="sqlQuery">sql запрос</param>
+        /// <param name="parameters">дополнительные параметры, представленные в запросе как @value</param>
+        /// <returns>количество строк задействованных в выполнении команды</returns>
         public int ExecInsOrDelQuery(string sqlQuery, Dictionary<string,string> parameters)
         {
             if (sqlQuery.Contains("select"))//запрет на выборку (select)
@@ -256,6 +345,79 @@ namespace ElJournal.DBInteract
             }
         }
 
+
+        /// <summary>
+        /// Асинхронно выполняет запросы Insert, Update, Delete к базе данных.
+        /// Не рекомендуется для Delete запросов.
+        /// </summary>
+        /// <param name="sqlQuery">sql запрос</param>
+        /// <returns>количество строк задействованных в выполнении команды</returns>
+        public async Task<int> ExecInsOrDelQueryAsync(string sqlQuery)
+        {
+            if (sqlQuery.Contains("select"))//запрет на выборку (select)
+                throw new FormatException("Incorrect sql query for this method");
+
+            conn.Open();
+            int result = default(int);
+            try
+            {
+                SqlCommand query = new SqlCommand(sqlQuery, conn);
+                result = await query.ExecuteNonQueryAsync();
+            }
+            catch (SqlException e)
+            {
+                //TODO: add log
+                conn.Close();
+                throw e;
+            }
+
+            conn.Close();
+            return result;
+        }
+
+
+        /// <summary>
+        /// Асинхронно выполняет запросы Insert, Update, Delete к базе данных.
+        /// Не рекомендуется для Delete запросов.
+        /// </summary>
+        /// <param name="sqlQuery">sql запрос</param>
+        /// <param name="parameters">дополнительные параметры, представленные в запросе как @value</param>
+        /// <returns></returns>
+        public async Task<int> ExecInsOrDelQueryAsync(string sqlQuery, Dictionary<string, string> parameters)
+        {
+            if (sqlQuery.Contains("select"))//запрет на выборку (select)
+                throw new FormatException("Incorrect sql query for this method");
+
+            conn.Open();
+            int result = default(int);
+            try
+            {
+                SqlCommand query = new SqlCommand(sqlQuery, conn);//формирование запроса
+
+                foreach (var obj in parameters)//добавление добавление параметров к запросу
+                    query.Parameters.Add(new SqlParameter(obj.Key, obj.Value));
+
+                result = await query.ExecuteNonQueryAsync();//выполнение запроса
+            }
+            catch (SqlException e)
+            {
+                //TODO: add log
+                conn.Close();
+                throw e;
+            }
+
+            conn.Close();
+            return result;
+        }
+
+
+
+        /// <summary>
+        /// Проводит проверку наличия указанных прав пользователя
+        /// </summary>
+        /// <param name="personId">ID пользователя</param>
+        /// <param name="permission">Запрашиваемое разрешение</param>
+        /// <returns></returns>
         public async Task<bool> CheckPermission(string personId,string permission)
         {
             string sqlQuery = "select dbo.CheckRight(@token, @permission)";
@@ -263,36 +425,53 @@ namespace ElJournal.DBInteract
             parameters.Add("@token", personId);
             parameters.Add("@permission", permission);
             if (!string.IsNullOrWhiteSpace(personId))
-                return await ExecuteScalarQuery(sqlQuery, parameters);
+                return await ExecuteScalarQueryAsync(sqlQuery, parameters);
             else return false;
         }
 
+
+
+        /// <summary>
+        /// Список кафедр университета
+        /// </summary>
         public List<Dictionary<string,dynamic>> Departments
         {
             get
             {
-                return ExecSelectQuery("select * from Departments").Result;
+                return ExecSelectQueryAsync("select * from Departments").Result;
             }
         }
+
+        /// <summary>
+        /// Список факультетов университета
+        /// </summary>
         public List<Dictionary<string,dynamic>> Faculties
         {
             get
             {
-                return ExecSelectQuery("select * from Faculties").Result;
+                return ExecSelectQueryAsync("select * from Faculties").Result;
             }
         }
+
+        /// <summary>
+        /// Список групп
+        /// </summary>
         public List<Dictionary<string,dynamic>> Groups
         {
             get
             {
-                return ExecSelectQuery("select * from Groups").Result;
+                return ExecSelectQueryAsync("select * from Groups").Result;
             }
         }
+
+        /// <summary>
+        /// Список пользователей
+        /// </summary>
         public List<Dictionary<string, dynamic>> People
         {
             get
             {
-                return ExecSelectQuery("select * from People").Result;
+                return ExecSelectQueryAsync("select * from People").Result;
             }
         }
     }

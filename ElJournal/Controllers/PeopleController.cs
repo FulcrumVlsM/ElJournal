@@ -47,7 +47,7 @@ namespace ElJournal.Controllers
                 else
                     sqlQuery = sqlQueryOutAuth;
 
-                response.Data = await db.ExecSelectQuery(sqlQuery);//выполнение sql запроса
+                response.Data = await db.ExecSelectQueryAsync(sqlQuery);//выполнение sql запроса
                 response.Succesful = true;
 
                 _clientsHistory[clientIP] = DateTime.Now;    //добавление запроса в историю
@@ -86,7 +86,7 @@ namespace ElJournal.Controllers
                     sqlQuery = sqlQueryOutAuth;
 
                 parameters.Add("@id", id);
-                response.Data = await db.ExecSelectQuery(sqlQuery, parameters);//запрос в бд
+                response.Data = await db.ExecSelectQueryAsync(sqlQuery, parameters);//запрос в бд
                 response.Succesful = true;
             }
             catch (Exception e)
@@ -124,7 +124,7 @@ namespace ElJournal.Controllers
 
                 parameters.Add("@regex", name);
                 parameters.Add("@count", count.ToString());
-                response.Data = await db.ExecSelectQuery(sqlQuery, parameters);//запрос в бд
+                response.Data = await db.ExecSelectQueryAsync(sqlQuery, parameters);//запрос в бд
                 response.Succesful = true;
             }
             catch (Exception e)
@@ -168,7 +168,7 @@ namespace ElJournal.Controllers
                         response.Succesful = true;
                         response.message = "Person was added";
                         response.Data = 
-                            new { ID = await db.ExecuteScalarQuery(sqlGetId, parameters) };//получение id созданной записи
+                            new { ID = await db.ExecuteScalarQueryAsync(sqlGetId, parameters) };//получение id созданной записи
                     }
                     else
                         response.message = "Person not added";
@@ -228,6 +228,11 @@ namespace ElJournal.Controllers
                 //TODO: add log
             }
             return response;
+        }
+
+        public async Task<dynamic> UpdateToken([FromBody]AccountModels auth)
+        {
+            return null;
         }
 
         // DELETE: api/Persons/5
