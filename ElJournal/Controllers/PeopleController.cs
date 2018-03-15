@@ -230,6 +230,8 @@ namespace ElJournal.Controllers
             return response;
         }
 
+        [HttpGet]
+        [Route("api/People/UpdateToken")]
         public async Task<dynamic> UpdateToken([FromBody]AccountModels auth)
         {
             return null;

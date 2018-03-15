@@ -22,7 +22,7 @@ namespace ElJournal.Controllers
         
 
         // GET: api/LabWork
-        //TODO: возвращает полный список лабораторных работ (без самих файлов)
+        //возвращает полный список лабораторных работ (без самих файлов)
         public async Task<dynamic> Get([FromUri]string name)
         {
             Response response = new Response();
