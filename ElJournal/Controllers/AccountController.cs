@@ -4,41 +4,71 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Web.Http;
+using ElJournal.Models;
+using ElJournal.Providers;
+using System.Threading.Tasks;
 
 namespace ElJournal.Controllers
 {
     public class AccountController : ApiController
     {
-        //TODO: нужно сделать следующие методы:
-        /*1. Get: логин и пароль получать через header
-          2. Post: создание нового аккаунта
-          3. Put: изменение пароля и логина*/
-        
-        // GET: api/AccountW
-        public IEnumerable<string> Get()
+        // вернуть токен по логину и паролю (все)
+        // вернуть данные аккаунта по ID (администратор)
+        // Добавить новый аккаунт (регистрация пользователя) (все)
+        // Изменить логин и пароль (все рег. пользователи)
+        // Изменить данные аккаунта по id (администратор)
+        // Удалить аккаунт (администратор)
+
+
+
+        // GET: api/Account/auth/5/5
+        // проводит авторизацию, возвращает токен пользователя после ввода логина и пароля
+        [HttpGet]
+        [Route("api/Account/auth")]
+        public async Task<dynamic> Auth([FromUri]string login=null, [FromUri]string password=null)
         {
-            return new string[] { "value1", "value2" };
+            return null;
         }
 
-        // GET: api/AccountW/5
-        public string Get(int id)
+
+        // GET: api/Account
+        // возвращает данные определенного аккаунта
+        public async Task<dynamic> Get(string id)
         {
-            return "value";
+            return null;
         }
+
 
         // POST: api/AccountW
-        public void Post([FromBody]string value)
+        // Создание нового аккаунта
+        public async Task<dynamic> Post([FromBody]AccountModels account)
         {
+            return null;
         }
+
+
+        // PUT: api/AccountW?login=5&password=5
+        // изменение пароля для указанного аккаунта
+        public async Task<dynamic> Put([FromBody]AccountModels account,
+            [FromUri]string login=null, [FromUri]string password=null)
+        {
+            return null;
+        }
+
 
         // PUT: api/AccountW/5
-        public void Put(int id, [FromBody]string value)
+        // изменение данных аккаунта (для администратора)
+        public async Task<dynamic> Put(string id, [FromBody]AccountModels account)
         {
+            return null;
         }
 
+
         // DELETE: api/AccountW/5
-        public void Delete(int id)
+        // удалить аккаунт (администратор)
+        public dynamic Delete(string id)
         {
+            return null;
         }
     }
 }
