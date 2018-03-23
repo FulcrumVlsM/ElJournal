@@ -19,6 +19,7 @@ namespace ElJournal.Controllers
         // получить статус выполнения курсовой работы студентом (да, нет)
         // добавить курсовую работу (администратор, преподаватель)
         // добавить курсовую работу в план по предмету (администратор, преподаватель)
+        // установить курсовую работу студенту (администратор, преподаватель)
         // добавить этап процентовки в план по курсовой работе (администратор, преподаватель)
         // поставить отметку о выполнении процентовки (администратор, преподаватель)
         // поставить отметки о выполнении курсовой работы (администратор, преподаватель)
@@ -90,6 +91,16 @@ namespace ElJournal.Controllers
         [HttpPost]
         [Route("api/CourseWork/Plan/{subjectId}/{workId}")]
         public async Task<dynamic> PostPlan(string subjectId, string workId)
+        {
+            return null;
+        }
+
+
+        // POST: api/CourseWork/Exec/5/5
+        // установить курсовую работу студенту
+        [HttpPost]
+        [Route("api/CourseWork/Exec/{studentId}/{planWorkId}")]
+        public async Task<dynamic> PostExec(string studentId, string planWorkId)
         {
             return null;
         }

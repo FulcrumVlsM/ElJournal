@@ -230,6 +230,7 @@
     <Compile Include="Models\DepartmentModels.cs" />
     <Compile Include="Models\GroupModels.cs" />
     <Compile Include="Models\IdentityModels.cs" />
+    <Compile Include="Models\IndependentWorkModels.cs" />
     <Compile Include="Models\LabWorkModels.cs" />
     <Compile Include="Models\MessageModels.cs" />
     <Compile Include="Models\PersonModels.cs" />
