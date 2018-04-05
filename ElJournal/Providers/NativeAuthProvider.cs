@@ -1,9 +1,15 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using ElJournal.DBInteract;
+using System.Threading.Tasks;
+using System;
 
 namespace ElJournal.Providers
 {
+
+    /// <summary>
+    /// Представляет интерфейс для получения данных о пользователе, необходимых системе
+    /// </summary>
     public class NativeAuthProvider
     {
         private string _token;
@@ -20,18 +26,28 @@ namespace ElJournal.Providers
         /// </summary>
         /// <param name="token">токен пользователя</param>
         /// <returns>Новый объект NativeAuthProvider или Null при отсутствии пользователя с данным токеном</returns>
-        public static NativeAuthProvider GetInstance(string token)
+        public static async Task<NativeAuthProvider> GetInstance(string token)
         {
             if (string.IsNullOrEmpty(token))
                 return null;
             else
             {
-                DB db = DB.GetInstance();
-                string sqlQuery = "dbo.CheckToken(@token)";
-                if ((bool)db.ExecuteScalarQueryAsync(sqlQuery).Result)
-                    return new NativeAuthProvider(token);
-                else
+                try
+                {
+                    DB db = DB.GetInstance();
+                    string sqlQuery = "select dbo.CheckToken(@token)";
+                    var parameters = new Dictionary<string, string>();
+                    parameters.Add("@token", token);
+                    if ((bool)await db.ExecuteScalarQueryAsync(sqlQuery, parameters))
+                        return new NativeAuthProvider(token);
+                    else
+                        return null;
+                }
+                catch(Exception e)
+                {
+                    //TODO: add log
                     return null;
+                }
             }
         }
 
@@ -112,6 +128,38 @@ namespace ElJournal.Providers
             }
         }
 
+        public List<string> LabWorks
+        {
+            get
+            {
+                DB db = DB.GetInstance();
+                string sqlQuery = " select ID from dbo.GetLabWorksOfTheAuthor(@personId)";
+                var parameters = new Dictionary<string, string>();
+                parameters.Add("@personId", PersonId);
+                var list = db.ExecSelectQueryAsync(sqlQuery, parameters).Result;
+                var works = new List<string>();
+                foreach (var item in list)
+                    works.Add(item["ID"]);
+                return works;
+            }
+        }
+
+        public List<string> PractWorks
+        {
+            get
+            {
+                DB db = DB.GetInstance();
+                string sqlQuery = " select ID from dbo.GetPractWorksOfTheAuthor(@personId)";
+                var parameters = new Dictionary<string, string>();
+                parameters.Add("@personId", PersonId);
+                var list = db.ExecSelectQueryAsync(sqlQuery, parameters).Result;
+                var works = new List<string>();
+                foreach (var item in list)
+                    works.Add(item["ID"]);
+                return works;
+            }
+        }
+
         /// <summary>
         /// Токен пользователя
         /// </summary>
@@ -135,8 +183,9 @@ namespace ElJournal.Providers
             get
             {
                 DB db = DB.GetInstance();
-                var people = (List <Dictionary<string,dynamic>>)db.People.Where(x => x["token"] = _token);
-                return (people[0])["ID"];
+                var people = db.People.Where(x => x["token"] == _token);
+                return people.ElementAt(0)["ID"];
+                //return (people[0])["ID"];
             }
         }
 

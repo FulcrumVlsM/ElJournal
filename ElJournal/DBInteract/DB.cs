@@ -127,6 +127,49 @@ namespace ElJournal.DBInteract
 
 
         /// <summary>
+        /// Выполняет асинхронный запрос к БД на выборку одной строки, выпролняя указанный sql запрос
+        /// </summary>
+        /// <param name="sqlQuery">sql запрос</param>
+        /// <param name="parameters">дополнительные параметры, представленные в запросе как @value</param>
+        /// <returns>Коллекция ключ-значение, содержащая данные первой строки sql запроса</returns>
+        public async Task<Dictionary<string,dynamic>> ExecSelectQuerySingleAsync(string sqlQuery, Dictionary<string, string> parameters)
+        {
+            if (sqlQuery.Contains("insert") || sqlQuery.Contains("delete"))
+                throw new FormatException("Incorrect sql query for this method");
+
+            var conn = new SqlConnection(connectionString);
+            var set = new List<Dictionary<string, dynamic>>(); //результат
+            await conn.OpenAsync();
+            try
+            {
+                SqlCommand query = new SqlCommand(sqlQuery, conn);
+                foreach (var obj in parameters)//добавление параметров в запрос
+                    query.Parameters.Add(new SqlParameter(obj.Key, obj.Value));
+                SqlDataReader result = await query.ExecuteReaderAsync();
+
+                while (result.Read())
+                {
+                    Dictionary<string, dynamic> row = new Dictionary<string, dynamic>(result.FieldCount);
+                    for (int i = 0; i < result.FieldCount; i++)
+                    {
+                        row.Add(result.GetName(i), result.GetFieldValue<dynamic>(i));
+                    }
+                    set.Add(row);
+                }
+                conn.Close();
+            }
+            catch (SqlException e)
+            {
+                //TODO: add log
+                conn.Close();
+                throw e;
+            }
+
+            return set[0];
+        }
+
+
+        /// <summary>
         /// Выполняет асинхронный запрос на получение скалярного значения из БД.
         /// </summary>
         /// <param name="sqlQuery">sql запрос</param>

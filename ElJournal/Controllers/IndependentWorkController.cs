@@ -94,7 +94,7 @@ namespace ElJournal.Controllers
         // установить выполнение самостоятельной работы студентом (преподаватель, администратор)
         [HttpPost]
         [Route("api/IndependentWork/Exec/{studentId}")]
-        public async Task<dynamic> PostExec(string studentId, [FromUri]bool state=true, [FromBody]string Info)
+        public async Task<dynamic> PostExec(string studentId, [FromBody]string Info, [FromUri]bool state = true)
         {
             return null;
         }
