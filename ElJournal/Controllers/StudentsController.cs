@@ -18,7 +18,7 @@ namespace ElJournal.Controllers
         private static string table3 = "Groups";
 
         // GET: api/Students
-        public async Task<dynamic> Get()
+        public dynamic Get()
         {
             return null;
         }
@@ -45,11 +45,11 @@ namespace ElJournal.Controllers
             {
                 DB db = DB.GetInstance();
                 parameters.Add("@studentId", id);
-                parameters.Add("@personId", await db.ExecuteScalarQuery(sqlQuery1, parameters));
-                parameters.Add("@groupSemester", await db.ExecuteScalarQuery(sqlQuery2, parameters));
+                parameters.Add("@personId", await db.ExecuteScalarQueryAsync(sqlQuery1, parameters));
+                parameters.Add("@groupSemester", await db.ExecuteScalarQueryAsync(sqlQuery2, parameters));
 
-                var person = (await db.ExecSelectQuery(sqlQuery3, parameters))[0];
-                var group = (await db.ExecSelectQuery(sqlQuery4, parameters))[0];
+                var person = (await db.ExecSelectQueryAsync(sqlQuery3, parameters))[0];
+                var group = (await db.ExecSelectQueryAsync(sqlQuery4, parameters))[0];
 
                 response.Data = new //формирование результата запроса
                 {
@@ -94,9 +94,11 @@ namespace ElJournal.Controllers
                 parameters.Add("@group", student.groupId);
 
                 //проверка наличия необходимых разрешений
-                bool facultyRight = await db.CheckPermission(authorId, Permission.STUDENT_PERMISSION) ?
-                    (bool)await db.ExecuteScalarQuery(sqlQuery3, parameters) : false;
-                bool commonRight = await db.CheckPermission(authorId, Permission.STUDENT_COMMON_PERMISSION);
+                bool facultyRight = default(bool), commonRight = default(bool);
+                Parallel.Invoke(
+                    async () => facultyRight = await db.CheckPermission(authorId, Permission.STUDENT_PERMISSION) ?
+                    (bool)await db.ExecuteScalarQueryAsync(sqlQuery3, parameters) : false,
+                    async () => commonRight = await db.CheckPermission(authorId, Permission.STUDENT_COMMON_PERMISSION));
                 
                 if (commonRight || facultyRight)
                 {
@@ -104,13 +106,13 @@ namespace ElJournal.Controllers
                     parameters.Clear();
                     parameters.Add("@SemesterID", student.semesterId);
                     parameters.Add("@GroupID", student.groupId);
-                    string groupsSemester = await db.ExecuteScalarQuery(sqlQuery2, parameters);
+                    string groupsSemester = await db.ExecuteScalarQueryAsync(sqlQuery2, parameters);
 
                     //добавление связи между человеком и группой
                     parameters.Clear();
                     parameters.Add("@PersonID", student.personId ?? String.Empty);
                     parameters.Add("@GroupSemesterID", groupsSemester ?? String.Empty);
-                    int res = db.ExecInsOrDelQuery(sqlQuery, parameters);
+                    int res = await db.ExecInsOrDelQueryAsync(sqlQuery, parameters);
                     if (res == 1)
                     {
                         response.Succesful = true;
@@ -149,7 +151,7 @@ namespace ElJournal.Controllers
 
                 //проверка наличия необходимых разрешений
                 bool facultyRight = await db.CheckPermission(authorId, Permission.STUDENT_PERMISSION) ?
-                    (bool)await db.ExecuteScalarQuery(sqlQuery2, parameters) : false;
+                    (bool)await db.ExecuteScalarQueryAsync(sqlQuery2, parameters) : false;
                 bool commonRight = await db.CheckPermission(authorId, Permission.STUDENT_COMMON_PERMISSION);
 
                 if (commonRight || facultyRight)

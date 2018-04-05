@@ -5,6 +5,9 @@ using System.Web;
 
 namespace ElJournal.Models
 {
+    /// <summary>
+    /// Класс представляющий шаблон для ответа клиенту
+    /// </summary>
     public class Response
     {
         public bool Succesful { get; set; } = default(bool);
@@ -18,6 +21,10 @@ namespace ElJournal.Models
         public DateTime NextRequestTo { get; set; } = default(DateTime);
     }
 
+
+    /// <summary>
+    /// класс, содержащий тексты различных ошибок для клиента
+    /// </summary>
     public static class ErrorMessage
     {
         public const string PERMISSION_ERROR = "You don't have permission for this operation";

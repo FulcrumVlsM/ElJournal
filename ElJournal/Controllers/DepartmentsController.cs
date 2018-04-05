@@ -25,7 +25,7 @@ namespace ElJournal.Controllers
             {
                 DB db = DB.GetInstance();
                 response.Succesful = true;
-                return await db.ExecSelectQuery("select * from Departments");
+                return await db.ExecSelectQueryAsync("select * from Departments");
             }
             catch (Exception e)
             {
@@ -46,7 +46,7 @@ namespace ElJournal.Controllers
                 Dictionary<string, string> parameters = new Dictionary<string, string>();
                 parameters.Add("@id", id);
                 response.Succesful = true;
-                response.Data = await db.ExecSelectQuery("select * from Departments", parameters);
+                response.Data = await db.ExecSelectQueryAsync("select * from Departments", parameters);
             }
             catch (Exception e)
             {
