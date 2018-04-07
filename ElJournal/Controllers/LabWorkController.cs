@@ -82,7 +82,7 @@ namespace ElJournal.Controllers
         // получить список моих лабораторных работ (все рег. пользователи)
         [HttpGet]
         [Route("api/LabWork/my")]
-        public async Task<IHttpActionResult> GetMy()
+        public async Task<HttpResponseMessage> GetMy()
         {
             Response response = new Response();
             string token = Request?.Headers?.Authorization?.Scheme;
@@ -98,17 +98,17 @@ namespace ElJournal.Controllers
                     parameters.Add("@authorId", authProvider.PersonId);
                     var my = await db.ExecSelectQueryAsync(sqlQuery, parameters);//получение списка из БД
                     response.Data = LabWork.ToLabWork(my); //преобразование списка к модели
-                    return Ok(response);
+                    return Request.CreateResponse(HttpStatusCode.OK, response);
                 }
                 catch(Exception e)
                 {
                     Logger logger = LogManager.GetCurrentClassLogger();
                     logger.Fatal(e.ToString()); //запись лога с ошибкой
-                    return InternalServerError();
+                    return Request.CreateResponse(HttpStatusCode.InternalServerError);
                 }
             }
             else
-                return Unauthorized(null);
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
         }
 
 
@@ -116,7 +116,7 @@ namespace ElJournal.Controllers
         // получить список лабораторных по определенному предмету (все)
         [HttpGet]
         [Route("api/LabWork/plan/{subjectId}")]
-        public async Task<IHttpActionResult> GetPlan(string subjectId)
+        public async Task<HttpResponseMessage> GetPlan(string subjectId)
         {
             Response response = new Response();
             var parameters = new Dictionary<string, string>();
@@ -131,16 +131,14 @@ namespace ElJournal.Controllers
                 parameters.Add("@subjectId", subjectId);
                 var planned = await db.ExecSelectQueryAsync(sqlQuery, parameters);//получение данных из БД
                 response.Data = LabWork.ToLabWork(planned); // преобразование в модель
-                response.Succesful = true;
+                return Request.CreateResponse(HttpStatusCode.OK, response);
             }
             catch(Exception e)
             {
                 Logger logger = LogManager.GetCurrentClassLogger();
                 logger.Fatal(e.ToString()); //запись лога с ошибкой
-                return InternalServerError();
+                return Request.CreateResponse(HttpStatusCode.InternalServerError);
             }
-
-            return Ok(response);
         }
 
 
@@ -249,52 +247,6 @@ namespace ElJournal.Controllers
         }
 
 
-        // GET: api/LabWork/file/5
-        // получить файл, прикрепленный к лаб работе (все рег. пользователи)
-        [HttpGet]
-        [Route("api/LabWork/file/{id}")]
-        public async Task<HttpResponseMessage> GetFile(string id)
-        {
-            //авторизация пользователя
-            string token = Request?.Headers?.Authorization?.Scheme;
-            NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
-
-            if (authProvider != null)
-            {
-                LabWork labWork = await LabWork.GetInstanceAsync(id);// получение лабораторной работы
-
-                string path = labWork.FileURL + labWork.FileName; // физический путь к файлу
-                try
-                {
-                    if (string.IsNullOrEmpty(path))//если к работе не приложен файл, сгенерируется exception
-                        throw new FileNotFoundException("This labwork don't have attachment file");
-
-                    var stream = new FileStream(path, FileMode.Open);
-
-                    //отправка файла
-                    var result = new HttpResponseMessage(HttpStatusCode.OK);
-                    result.Content = new StreamContent(stream);
-                    result.Content.Headers.ContentDisposition =
-                        new ContentDispositionHeaderValue("attachment")
-                        {
-                            FileName = labWork.FileName
-                        };
-                    result.Content.Headers.ContentType =
-                        new MediaTypeHeaderValue("application/octet-stream");
-
-                    return result;
-                }
-                catch (FileNotFoundException e)
-                {
-                    //TODO: add log
-                    return new HttpResponseMessage(HttpStatusCode.NotFound);
-                }
-            }
-            else
-                return new HttpResponseMessage(HttpStatusCode.Unauthorized);
-        }
-
-
         // POST: api/LabWork/plan/5/5
         // добавить лабораторную работу в план (автор, администратор)
         [HttpPost]
@@ -356,18 +308,21 @@ namespace ElJournal.Controllers
         // POST: api/LabWork/exec/5/5?state=true
         // отметка о выполнении лаб. работы (параметр state) (преподаватель, администратор)
         [HttpPost]
-        [Route("api/LabWork/exec/{studentId}/{subjWorkId}")]
-        public async Task<IHttpActionResult> PostExec(string studentId, string subjWorkId, 
+        [Route("api/LabWork/exec/{studentId}/{workId}/{subjectGroupId}")]
+        public async Task<IHttpActionResult> PostExec(string studentId, string workId, string subjectGroupId,
             [FromUri]bool state=true)
         {
             Response response = new Response();
             Logger logger = LogManager.GetCurrentClassLogger();
+
+            //идентификация пользователя
             string token = Request?.Headers?.Authorization?.Scheme; //токен пользователя
             NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
+
             var parameters = new Dictionary<string, string>();
 
             //проверка относится ли запись из LabWorkPlan к группе указанного студента
-            string sqlQuery1 = "select * from dbo.CheckStudentLabWorkPlan(@studentId,@planId)";
+            string sqlQuery1 = "select * from dbo.CheckStudentLabWorkPlan(@studentId,@workID,@subjectGroupSemesterID)";
             // добавление факта выполнения работы
             string sqlQuery2 = "insert into LabWorksExecution(LabWorkPlanID,StudentGroupSemesterID)" +
                 " values(@planId,@studentId)";
@@ -376,13 +331,15 @@ namespace ElJournal.Controllers
                 "and StudentGroupSemesterID=@studentId";
 
             parameters.Add("@studentId", studentId);
-            parameters.Add("@planId", subjWorkId);
+            parameters.Add("@workID", workId);
+            parameters.Add("@subjectGroupSemesterID", subjectGroupId);
+            parameters.Add("@planId", await LabWorkPlan.GetPlanIdAsync(subjectGroupId, workId));
             parameters.Add("@token", token);
 
             try
             {
                 DB db = DB.GetInstance();
-                string subjectId = await getSubjectAsync(subjWorkId);
+                string subjectId = await getSubjectAsync(workId);
                 bool commonRight = default(bool), //право LBWRK_COMMON_PERMISSION
                     teacherRight = default(bool), // право LBWRK_PERMISSION, и если пользователь - преподаватель предмета
                     trueData = default(bool); // корректность данных
