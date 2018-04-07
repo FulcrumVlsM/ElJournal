@@ -115,6 +115,31 @@ namespace ElJournal.Controllers
         // GET: api/LabWork/plan/5
         // получить список лабораторных по определенному предмету (все)
         [HttpGet]
+        [Route("api/LabWork/my")]
+        public async Task<IHttpActionResult> GetMy()
+        {
+            Response response = new Response();
+            string token = Request?.Headers?.Authorization?.Scheme;
+            NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
+            string sqlQuery = "select ID, name from LabWorks where authorID=@authorId";
+            var parameters = new Dictionary<string, string>();
+
+            if (authProvider != null)
+            {
+                DB db = DB.GetInstance();
+                parameters.Add("@authorId", authProvider.PersonId);
+                response.Data = await db.ExecSelectQueryAsync(sqlQuery, parameters);
+
+                return Ok(response);
+            }
+            else
+                return Unauthorized(null);
+        }
+
+
+        // GET: api/LabWork/plan/5
+        // получить список лабораторных по определенному предмету (все)
+        [HttpGet]
         [Route("api/LabWork/plan/{subjectId}")]
         public async Task<IHttpActionResult> GetPlan(string subjectId)
         {
@@ -241,6 +266,52 @@ namespace ElJournal.Controllers
                 {
                     Logger logger = LogManager.GetCurrentClassLogger();
                     logger.Error(e.ToString()); //запись лога с ошибкой
+                    return new HttpResponseMessage(HttpStatusCode.NotFound);
+                }
+            }
+            else
+                return new HttpResponseMessage(HttpStatusCode.Unauthorized);
+        }
+
+
+        // GET: api/LabWork/file/5
+        // получить файл, прикрепленный к лаб работе (все рег. пользователи)
+        [HttpGet]
+        [Route("api/LabWork/file/{id}")]
+        public async Task<HttpResponseMessage> GetFile(string id)
+        {
+            //авторизация пользователя
+            string token = Request?.Headers?.Authorization?.Scheme;
+            NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
+
+            if (authProvider != null)
+            {
+                LabWork labWork = await LabWork.GetInstanceAsync(id);// получение лабораторной работы
+
+                string path = labWork.FileURL + labWork.FileName; // физический путь к файлу
+                try
+                {
+                    if (string.IsNullOrEmpty(path))//если к работе не приложен файл, сгенерируется exception
+                        throw new FileNotFoundException("This labwork don't have attachment file");
+
+                    var stream = new FileStream(path, FileMode.Open);
+
+                    //отправка файла
+                    var result = new HttpResponseMessage(HttpStatusCode.OK);
+                    result.Content = new StreamContent(stream);
+                    result.Content.Headers.ContentDisposition =
+                        new ContentDispositionHeaderValue("attachment")
+                        {
+                            FileName = labWork.FileName
+                        };
+                    result.Content.Headers.ContentType =
+                        new MediaTypeHeaderValue("application/octet-stream");
+
+                    return result;
+                }
+                catch (FileNotFoundException e)
+                {
+                    //TODO: add log
                     return new HttpResponseMessage(HttpStatusCode.NotFound);
                 }
             }
