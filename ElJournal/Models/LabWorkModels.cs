@@ -177,12 +177,12 @@ namespace ElJournal.Models
             {
                 labWorks.Add(new ExecutedLabWork
                 {
-                    ID = obj["ID"].ToString(),
-                    Name = obj["name"].ToString(),
-                    FileName = obj["fileName"].ToString(),
-                    FileURL = obj["fileURL"].ToString(),
-                    Advanced = obj["advanced"].ToString(),
-                    Date = obj["date"]
+                    ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : string.Empty,
+                    Name = obj.ContainsKey("name") ? obj["name"].ToString() : string.Empty,
+                    FileName = obj.ContainsKey("fileName") ? obj["fileName"].ToString() : string.Empty,
+                    FileURL = obj.ContainsKey("fileURL") ? obj["fileURL"].ToString() : string.Empty,
+                    Advanced = obj.ContainsKey("advanced") ? obj["advanced"].ToString() : string.Empty,
+                    Date = obj.ContainsKey("date") ? obj["date"] : default(DateTime)
                 });
             }
 
