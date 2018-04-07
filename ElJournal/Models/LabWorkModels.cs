@@ -30,11 +30,11 @@ namespace ElJournal.Models
             var result = await db.ExecSelectQuerySingleAsync(sqlQuery, parameters);
             return new LabWork
             {
-                ID = result["ID"],
-                Name = result["name"],
-                FileName = result["fileName"],
-                FileURL = result["fileURL"],
-                Advanced = result["advanced"]
+                ID = result["ID"].ToString(),
+                Name = result["name"].ToString(),
+                FileName = result["fileName"].ToString(),
+                FileURL = result["fileURL"].ToString(),
+                Advanced = result["advanced"].ToString()
             };
         }
 
@@ -52,11 +52,29 @@ namespace ElJournal.Models
             {
                 labWorks.Add(new LabWork
                 {
-                    ID = obj["ID"],
-                    Name = obj["name"],
-                    FileName = obj["fileName"],
-                    FileURL = obj["fileURL"],
-                    Advanced = obj["advanced"]
+                    ID = obj["ID"].ToString(),
+                    Name = obj["name"].ToString(),
+                    FileName = obj["fileName"].ToString(),
+                    FileURL = obj["fileURL"].ToString(),
+                    Advanced = obj["advanced"].ToString()
+                });
+            }
+
+            return labWorks;
+        }
+
+        public static List<LabWork> ToLabWork(List<Dictionary<string, dynamic>> works)
+        {
+            var labWorks = new List<LabWork>(works.Count);
+            foreach (var obj in works)
+            {
+                labWorks.Add(new LabWork
+                {
+                    ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : string.Empty,
+                    Name = obj.ContainsKey("name") ? obj["name"].ToString() : string.Empty,
+                    FileName = obj.ContainsKey("fileName") ? obj["fileName"].ToString() : string.Empty,
+                    FileURL = obj.ContainsKey("fileURL") ? obj["fileURL"].ToString() : string.Empty,
+                    Advanced = obj.ContainsKey("advanced") ? obj["advanced"].ToString() : string.Empty
                 });
             }
 
@@ -129,5 +147,46 @@ namespace ElJournal.Models
                 return false;
         }
 
+    }
+
+
+    public class LabWorkPlan : LabWork
+    {
+        public static async Task<string> GetPlanIdAsync(string subjectId, string workId)
+        {
+            string sqlQuery = "select ID from LabWorksPlan where SubjectGroupSemesterID=@subjectID and LabWorkID=@workID";
+            var parameters = new Dictionary<string, string>();
+            parameters.Add("@subjectID", subjectId);
+            parameters.Add("@workID", workId);
+
+            DB db = DB.GetInstance();
+            var plan = await db.ExecuteScalarQueryAsync(sqlQuery, parameters);
+            return plan?.ToString() ?? string.Empty;
+        }
+    }
+
+    
+    public class ExecutedLabWork : LabWork
+    {
+        public DateTime Date;
+
+        public new static List<ExecutedLabWork> ToLabWork(List<Dictionary<string, dynamic>> works)
+        {
+            var labWorks = new List<ExecutedLabWork>(works.Count);
+            foreach (var obj in works)
+            {
+                labWorks.Add(new ExecutedLabWork
+                {
+                    ID = obj["ID"].ToString(),
+                    Name = obj["name"].ToString(),
+                    FileName = obj["fileName"].ToString(),
+                    FileURL = obj["fileURL"].ToString(),
+                    Advanced = obj["advanced"].ToString(),
+                    Date = obj["date"]
+                });
+            }
+
+            return labWorks;
+        }
     }
 }
