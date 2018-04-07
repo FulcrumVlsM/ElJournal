@@ -115,31 +115,6 @@ namespace ElJournal.Controllers
         // GET: api/LabWork/plan/5
         // получить список лабораторных по определенному предмету (все)
         [HttpGet]
-        [Route("api/LabWork/my")]
-        public async Task<IHttpActionResult> GetMy()
-        {
-            Response response = new Response();
-            string token = Request?.Headers?.Authorization?.Scheme;
-            NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
-            string sqlQuery = "select ID, name from LabWorks where authorID=@authorId";
-            var parameters = new Dictionary<string, string>();
-
-            if (authProvider != null)
-            {
-                DB db = DB.GetInstance();
-                parameters.Add("@authorId", authProvider.PersonId);
-                response.Data = await db.ExecSelectQueryAsync(sqlQuery, parameters);
-
-                return Ok(response);
-            }
-            else
-                return Unauthorized(null);
-        }
-
-
-        // GET: api/LabWork/plan/5
-        // получить список лабораторных по определенному предмету (все)
-        [HttpGet]
         [Route("api/LabWork/plan/{subjectId}")]
         public async Task<IHttpActionResult> GetPlan(string subjectId)
         {
