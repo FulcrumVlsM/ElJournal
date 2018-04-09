@@ -1,27 +1,173 @@
-﻿using System;
+﻿using ElJournal.DBInteract;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Web;
 
 namespace ElJournal.Models
 {
-    public class CourseWorkModels
+    public class CourseWork
     {
         public string ID { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
         public string Advanced { get; set; }
         public string FileURL { get; set; }
+        public string FileName { get; set; }
+
+
+        /// <summary>
+        /// Возвращает курсовую работу по указанному ID
+        /// </summary>
+        /// <param name="id">id курсовой работы</param>
+        /// <returns></returns>
+        public static async Task<CourseWork> GetInstanceAsync(string id)
+        {
+            string sqlQuery = "select * from CourseWorks where ID=@id";
+            var parameters = new Dictionary<string, string>();
+            parameters.Add("@id", id);
+            DB db = DB.GetInstance();
+            var result = await db.ExecSelectQuerySingleAsync(sqlQuery, parameters);
+            return new CourseWork
+            {
+                ID = result.ContainsKey("ID") ? result["ID"].ToString() : string.Empty,
+                Name = result.ContainsKey("name") ? result["name"].ToString() : string.Empty,
+                FileName = result.ContainsKey("fileName") ? result["fileName"].ToString() : string.Empty,
+                //FileURL = result.ContainsKey("fileURL") ? result["fileURL"].ToString() : string.Empty,
+                Advanced = result.ContainsKey("advanced") ? result["advanced"].ToString() : string.Empty,
+                Description = result.ContainsKey("description") ? result["description"].ToString() : string.Empty
+            };
+        }
+
+
+        /// <summary>
+        /// Возвращает полный список курсовых работ
+        /// </summary>
+        /// <returns></returns>
+        public static async Task<List<CourseWork>> GetCollectionAsync()
+        {
+            string sqlQuery = "select * from CourseWorks";
+            DB db = DB.GetInstance();
+            var result = await db.ExecSelectQueryAsync(sqlQuery);
+            var labWorks = new List<CourseWork>(result.Count);
+            foreach (var obj in result)
+            {
+                labWorks.Add(new CourseWork
+                {
+                    ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : string.Empty,
+                    Name = obj.ContainsKey("name") ? obj["name"].ToString() : string.Empty,
+                    FileName = obj.ContainsKey("fileName") ? obj["fileName"].ToString() : string.Empty,
+                    FileURL = obj.ContainsKey("fileURL") ? obj["fileURL"].ToString() : string.Empty,
+                    Advanced = obj["advanced"].ToString()
+                });
+            }
+
+            return labWorks;
+        }
+
+        /// <summary>
+        /// Производит преобразование коллекции, полученной методами класса DB в коллекцию моделей
+        /// </summary>
+        /// <param name="works"></param>
+        /// <returns></returns>
+        public static List<CourseWork> ToCourseWork(List<Dictionary<string, dynamic>> works)
+        {
+            var labWorks = new List<CourseWork>(works.Count);
+            foreach (var obj in works)
+            {
+                labWorks.Add(new CourseWork
+                {
+                    ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : string.Empty,
+                    Name = obj.ContainsKey("name") ? obj["name"].ToString() : string.Empty,
+                    FileName = obj.ContainsKey("fileName") ? obj["fileName"].ToString() : string.Empty,
+                    FileURL = obj.ContainsKey("fileURL") ? obj["fileURL"].ToString() : string.Empty,
+                    Advanced = obj.ContainsKey("advanced") ? obj["advanced"].ToString() : string.Empty,
+                    Description = obj.ContainsKey("description") ? obj["description"].ToString() : string.Empty
+                });
+            }
+
+            return labWorks;
+        }
+
+        /// <summary>
+        /// Сохраняет текущий объект CourseWork в БД
+        /// </summary>
+        /// <param name="authorId">автор</param>
+        /// <returns>True, если объект был добавлен в БД</returns>
+        public async Task<bool> Push(string authorId)
+        {
+            var parameters = new Dictionary<string, string>();
+            string procName = "dbo.AddCourseWork";
+            parameters.Add("@name", Name);
+            parameters.Add("@advanced", Advanced);
+            parameters.Add("@description", Description);
+            parameters.Add("@authorId", authorId);
+            DB db = DB.GetInstance();
+            return Convert.ToBoolean(await db.ExecStoredProcedureAsync(procName, parameters));
+        }
+
+        /// <summary>
+        /// Сохраняет указанное имя и URL файла как присоединенный файл
+        /// </summary>
+        /// <returns></returns>
+        public async Task<bool> AttachFile()
+        {
+            string procName = "dbo.UpdateCourseWork";
+            var parameters = new Dictionary<string, string>();
+            DB db = DB.GetInstance();
+            parameters.Add("@ID", ID);
+            parameters.Add("@fileName", FileName);
+            parameters.Add("@fileURL", FileURL);
+            return Convert.ToBoolean(await db.ExecStoredProcedureAsync(procName, parameters));
+        }
+
+        /// <summary>
+        /// Обновляет в БД выбранный объект (по ID)
+        /// </summary>
+        /// <returns></returns>
+        public async Task<bool> Update()
+        {
+            string procName = "dbo.UpdateCourseWork";
+            var parameters = new Dictionary<string, string>();
+            DB db = DB.GetInstance();
+            parameters.Add("@ID", ID);
+            parameters.Add("@name", Name);
+            parameters.Add("@advanced", Advanced);
+            return Convert.ToBoolean(await db.ExecStoredProcedureAsync(procName, parameters));
+        }
+
+        /// <summary>
+        /// Удаление текущего объекта из БД
+        /// </summary>
+        /// <returns></returns>
+        public bool Delete()
+        {
+            string sqlQuery = "delete from CourseWorks where ID=@ID";
+            var parameters = new Dictionary<string, string>
+            {
+                { "@ID", ID }
+            };
+            DB db = DB.GetInstance();
+            int result = db.ExecInsOrDelQuery(sqlQuery, parameters);
+            if (result == 1)
+            {
+                ID = null;
+                return true;
+            }
+            else
+                return false;
+        }
     }
 
-    public class CourseWorkStageModels
+    public class CourseWorkStage
     {
         public string ID { get; set; }
         public string Name { get; set; }
         public string Info { get; set; }
     }
 
-    public class CourseWorkExecutionModels
+    public class CourseWorkExecutionModels : CourseWork
     {
         public string Info { get; set; }
         public DateTime Date { get; set; }

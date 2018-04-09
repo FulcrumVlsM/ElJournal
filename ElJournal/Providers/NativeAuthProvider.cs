@@ -128,6 +128,9 @@ namespace ElJournal.Providers
             }
         }
 
+        /// <summary>
+        /// Список лабораторных работ, автором которых является пользователь
+        /// </summary>
         public List<string> LabWorks
         {
             get
@@ -144,12 +147,34 @@ namespace ElJournal.Providers
             }
         }
 
+        /// <summary>
+        /// Список практических работ, автором которых является пользователь
+        /// </summary>
         public List<string> PractWorks
         {
             get
             {
                 DB db = DB.GetInstance();
                 string sqlQuery = " select ID from dbo.GetPractWorksOfTheAuthor(@personId)";
+                var parameters = new Dictionary<string, string>();
+                parameters.Add("@personId", PersonId);
+                var list = db.ExecSelectQueryAsync(sqlQuery, parameters).Result;
+                var works = new List<string>();
+                foreach (var item in list)
+                    works.Add(item["ID"]);
+                return works;
+            }
+        }
+
+        /// <summary>
+        /// Список курсовых работ, автором которых является пользователь
+        /// </summary>
+        public List<string> CourseWorks
+        {
+            get
+            {
+                DB db = DB.GetInstance();
+                string sqlQuery = " select ID from dbo.GetCourseWorksOfTheAuthor(@personId)";
                 var parameters = new Dictionary<string, string>();
                 parameters.Add("@personId", PersonId);
                 var list = db.ExecSelectQueryAsync(sqlQuery, parameters).Result;

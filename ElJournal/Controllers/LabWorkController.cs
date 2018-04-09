@@ -514,7 +514,7 @@ namespace ElJournal.Controllers
             {
                 //проверка наличия прав пользователя
                 bool right = authProvider.CheckPermission(Permission.LBWRK_COMMON_PERMISSION) ||
-                    authProvider.CheckPermission(Permission.LBWRK_PERMISSION);
+                    authProvider.LabWorks.Contains(id);
 
                 if (right)
                 {
