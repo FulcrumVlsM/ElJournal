@@ -34,7 +34,6 @@ namespace ElJournal.Models
                 ID = result.ContainsKey("ID") ? result["ID"].ToString() : string.Empty,
                 Name = result.ContainsKey("name") ? result["name"].ToString() : string.Empty,
                 FileName = result.ContainsKey("fileName") ? result["fileName"].ToString() : string.Empty,
-                //FileURL = result.ContainsKey("fileURL") ? result["fileURL"].ToString() : string.Empty,
                 Advanced = result.ContainsKey("advanced") ? result["advanced"].ToString() : string.Empty,
                 Description = result.ContainsKey("description") ? result["description"].ToString() : string.Empty
             };
@@ -191,6 +190,7 @@ namespace ElJournal.Models
         public string ID { get; set; }
         public string Name { get; set; }
         public string Info { get; set; }
+        public string SubjectGroupSemesterId { get; set; }
 
         /// <summary>
         /// Возвращает этап (процентовку) курсовой работу по указанному ID
@@ -206,15 +206,128 @@ namespace ElJournal.Models
             };
             DB db = DB.GetInstance();
             var result = await db.ExecSelectQuerySingleAsync(sqlQuery, parameters);
-            return new CourseWorkStage
-            {
-                ID = result.ContainsKey("ID") ? result["ID"].ToString() : string.Empty,
-                Name = result.ContainsKey("name") ? result["name"].ToString() : string.Empty,
-                Info = result.ContainsKey("info") ? result["info"].ToString() : string.Empty
-            };
+
+            if (result.Count > 0)
+                return new CourseWorkStage
+                {
+                    ID = result.ContainsKey("ID") ? result["ID"].ToString() : string.Empty,
+                    Name = result.ContainsKey("name") ? result["name"].ToString() : string.Empty,
+                    Info = result.ContainsKey("info") ? result["info"].ToString() : string.Empty,
+                    SubjectGroupSemesterId = obj.ContainsKey("SubjectGroupSemesterID") ? obj["SubjectGroupSemesterID"] : string.Empty
+                };
+            else
+                return null;
         }
 
+        /// <summary>
+        /// Возвращает полный список процентовок курсовых работ
+        /// </summary>
+        /// <returns></returns>
+        public static async Task<List<CourseWorkStage>> GetCollectionAsync()
+        {
+            string sqlQuery = "select * from CourseWorkStage";
+            DB db = DB.GetInstance();
+            var result = await db.ExecSelectQueryAsync(sqlQuery);
+            var labWorks = new List<CourseWorkStage>(result.Count);
+            foreach (var obj in result)
+            {
+                labWorks.Add(new CourseWorkStage
+                {
+                    ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : string.Empty,
+                    Name = obj.ContainsKey("name") ? obj["name"].ToString() : string.Empty,
+                    Info = obj.ContainsKey("info") ? obj["info"].ToString() : string.Empty,
+                    SubjectGroupSemesterId = obj.ContainsKey("SubjectGroupSemesterID") ? obj["SubjectGroupSemesterID"] : string.Empty
+                });
+            }
 
+            return labWorks;
+        }
+
+        /// <summary>
+        /// Производит преобразование коллекции, полученной методами класса DB в коллекцию моделей
+        /// </summary>
+        /// <param name="stages"></param>
+        /// <returns></returns>
+        public static List<CourseWorkStage> ToCourseWorkStages(List<Dictionary<string, dynamic>> stages)
+        {
+            var labWorks = new List<CourseWorkStage>(stages.Count);
+            foreach (var obj in stages)
+            {
+                labWorks.Add(new CourseWorkStage
+                {
+                    ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : string.Empty,
+                    Name = obj.ContainsKey("name") ? obj["name"].ToString() : string.Empty,
+                    Info = obj.ContainsKey("info") ? obj["info"].ToString() : string.Empty,
+                    SubjectGroupSemesterId = obj.ContainsKey("SubjectGroupSemesterID") ? obj["SubjectGroupSemesterID"] : string.Empty
+                });
+            }
+
+            return labWorks;
+        }
+
+        /// <summary>
+        /// Возвращает процентовку курсовой работы по id предмета
+        /// </summary>
+        /// <param name="subjectId">id предмета (предмет-группа-семестр)</param>
+        /// <returns></returns>
+        public static async Task<List<CourseWorkStage>> GetCWorkStagesFromSubject(string subjectId)
+        {
+            var stages = await GetCollectionAsync();
+            return stages.FindAll(x => x.SubjectGroupSemesterId.Equals(subjectId));
+        }
+
+        /// <summary>
+        /// Сохраняет текущий объект CourseWorkStage в БД
+        /// </summary>
+        /// <param name="subjectId">автор</param>
+        /// <returns>True, если объект был добавлен в БД</returns>
+        public async Task<bool> Push()
+        {
+            var parameters = new Dictionary<string, string>();
+            string procName = "dbo.AddCourseWorkStage";
+            parameters.Add("@name", Name);
+            parameters.Add("@info", Info);
+            parameters.Add("@subjectId", SubjectGroupSemesterId);
+            DB db = DB.GetInstance();
+            return Convert.ToBoolean(await db.ExecStoredProcedureAsync(procName, parameters));
+        }
+
+        /// <summary>
+        /// Обновляет в БД выбранный объект (по ID)
+        /// </summary>
+        /// <returns></returns>
+        public async Task<bool> Update()
+        {
+            string procName = "dbo.UpdateCourseWorkStage";
+            var parameters = new Dictionary<string, string>();
+            DB db = DB.GetInstance();
+            parameters.Add("@ID", ID);
+            parameters.Add("@name", Name);
+            parameters.Add("@info", Info);
+            return Convert.ToBoolean(await db.ExecStoredProcedureAsync(procName, parameters));
+        }
+
+        /// <summary>
+        /// Удаление текущего объекта из БД
+        /// </summary>
+        /// <returns></returns>
+        public bool Delete()
+        {
+            string sqlQuery = "delete from CourseWorkStages where ID=@ID";
+            var parameters = new Dictionary<string, string>
+            {
+                { "@ID", ID }
+            };
+            DB db = DB.GetInstance();
+            int result = db.ExecInsOrDelQuery(sqlQuery, parameters);
+            if (result == 1)
+            {
+                ID = null;
+                return true;
+            }
+            else
+                return false;
+        }
     }
 
     public class CourseWorkExecution
@@ -270,6 +383,35 @@ namespace ElJournal.Models
             parameters.Add("@info", Info);
             parameters.Add("@state", Convert.ToInt16(State).ToString());
             return Convert.ToBoolean(await db.ExecStoredProcedureAsync(procName, parameters));
+        }
+    }
+
+
+    public class CourseWorkStageExecution : CourseWorkStage
+    {
+        DateTime Date { get; set; }
+
+        /// <summary>
+        /// Производит преобразование коллекции, полученной методами класса DB в коллекцию моделей
+        /// </summary>
+        /// <param name="stages"></param>
+        /// <returns></returns>
+        public new static List<CourseWorkStageExecution> ToCourseWorkStages(List<Dictionary<string, dynamic>> stages)
+        {
+            var labWorks = new List<CourseWorkStageExecution>(stages.Count);
+            foreach (var obj in stages)
+            {
+                labWorks.Add(new CourseWorkStageExecution
+                {
+                    ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : string.Empty,
+                    Name = obj.ContainsKey("name") ? obj["name"].ToString() : string.Empty,
+                    Info = obj.ContainsKey("info") ? obj["info"].ToString() : string.Empty,
+                    SubjectGroupSemesterId = obj.ContainsKey("SubjectGroupSemesterID") ? obj["SubjectGroupSemesterID"] : string.Empty,
+                    Date = obj.ContainsKey("date") ? obj["date"] : default(DateTime)
+                });
+            }
+
+            return labWorks;
         }
     }
 }

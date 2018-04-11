@@ -45,7 +45,7 @@ namespace ElJournal.Controllers
                     try
                     {
                         if (string.IsNullOrEmpty(name))// если шаблон для поиска не задавался
-                            response.Data = await LabWork.GetCollectionAsync();
+                            response.Data = await CourseWork.GetCollectionAsync();
                         else // если шаблон поиска был задан
                         {
                             Regex regex = new Regex(name);
@@ -433,10 +433,57 @@ namespace ElJournal.Controllers
 
         // удалить курсовую работу из плана (администратор, преподаватель)
         [HttpDelete]
-        [Route("api/CourseWork/plan/{id}")]
-        public HttpResponseMessage DeletePlan(string id)
+        [Route("api/CourseWork/plan/{subjectId}/{workId}")]
+        public async Task<HttpResponseMessage> DeletePlan(string subjectId, string workId)
         {
-            return Request.CreateResponse(HttpStatusCode.NotFound);
+            string sqlQuery = "delete from CourseWorkPlan where SubjectGroupSemesterID=@subjectId and CourseWorkID=@workId";
+            var parameters = new Dictionary<string, string>
+            {
+                {"@subjectId",subjectId },
+                {"@workId",workId }
+            };
+
+            //идентификация пользователя
+            string token = Request?.Headers?.Authorization?.Scheme;
+            NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
+
+            if (authProvider != null)
+            {
+                //проверка наличия прав на операцию
+                bool commonRight = default(bool),
+                    teacherRight = default(bool);
+                Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.CRSWRK_COMMON_PERMISSION),
+                    () => teacherRight = authProvider.CheckPermission(Permission.CRSWRK_PERMISSION) ?
+                                         authProvider.Subjects.Contains(subjectId) : false);
+
+                try
+                {
+                    if (commonRight || teacherRight)
+                    {
+                        DB db = DB.GetInstance();
+                        int result = db.ExecInsOrDelQuery(sqlQuery, parameters);
+                        if (result == 1)
+                            return Request.CreateResponse(HttpStatusCode.OK);
+                        else
+                        {
+                            Logger logger = LogManager.GetCurrentClassLogger();
+                            logger.Warn(string.Format("Не удалось удалить из плана по предмету \"{0}\" курсовую работу \"{1}\".",
+                                subjectId, workId));//запись лога
+                            return Request.CreateResponse(HttpStatusCode.NotFound);
+                        }
+                    }
+                    else
+                        return Request.CreateResponse(HttpStatusCode.Forbidden);
+                }
+                catch (Exception e)
+                {
+                    Logger logger = LogManager.GetCurrentClassLogger();
+                    logger.Fatal(e.ToString());//запись лога
+                    return Request.CreateResponse(HttpStatusCode.InternalServerError);
+                }
+            }
+            else
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
         }
 
 
