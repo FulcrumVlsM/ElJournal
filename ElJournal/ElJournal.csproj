@@ -208,6 +208,7 @@
     <Compile Include="Controllers\AccountController.cs" />
     <Compile Include="Controllers\AlertsController.cs" />
     <Compile Include="Controllers\CourseWorkController.cs" />
+    <Compile Include="Controllers\CourseWorkStageController.cs" />
     <Compile Include="Controllers\DepartmentsController.cs" />
     <Compile Include="Controllers\FacultiesController.cs" />
     <Compile Include="Controllers\GroupsController.cs" />

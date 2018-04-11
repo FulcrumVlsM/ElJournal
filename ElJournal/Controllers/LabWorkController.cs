@@ -319,8 +319,6 @@ namespace ElJournal.Controllers
             string token = Request?.Headers?.Authorization?.Scheme; //токен пользователя
             NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
 
-            var parameters = new Dictionary<string, string>();
-
             //проверка относится ли запись из LabWorkPlan к группе указанного студента
             string sqlQuery1 = "select * from dbo.CheckStudentLabWorkPlan(@studentId,@workID,@subjectGroupSemesterID)";
             // добавление факта выполнения работы
@@ -330,11 +328,14 @@ namespace ElJournal.Controllers
             string sqlQuery3 = "delete from LabWorksExecution where LabWorkPlanID=@planId " +
                 "and StudentGroupSemesterID=@studentId";
 
-            parameters.Add("@studentId", studentId);
-            parameters.Add("@workID", workId);
-            parameters.Add("@subjectGroupSemesterID", subjectGroupId);
-            parameters.Add("@planId", await LabWorkPlan.GetPlanIdAsync(subjectGroupId, workId));
-            parameters.Add("@token", token);
+            var parameters = new Dictionary<string, string>
+            {
+                { "@studentId", studentId },
+                { "@workID", workId },
+                { "@subjectGroupSemesterID", subjectGroupId },
+                { "@planId", await LabWorkPlan.GetPlanIdAsync(subjectGroupId, workId) },
+                { "@token", token }
+            };
 
             try
             {

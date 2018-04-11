@@ -91,6 +91,32 @@ namespace ElJournal.Models
         }
 
         /// <summary>
+        /// Возвращает курсовую работу по id плана
+        /// </summary>
+        /// <param name="planId">id плана</param>
+        /// <returns></returns>
+        public static async Task<CourseWork> GetCWorkFromPlan(string planId)
+        {
+            string sqlQuery = "select ID, name from dbo.GetCWorkIntoPlan(@planId)";
+            var parameters = new Dictionary<string, string>
+            {
+                {"@planId",planId }
+            };
+            DB db = DB.GetInstance();
+            var work = await db.ExecSelectQuerySingleAsync(sqlQuery, parameters);
+            if (work != null)
+            {
+                return new CourseWork
+                {
+                    ID = work.ContainsKey("ID") ? work["ID"].ToString() : string.Empty,
+                    Name = work.ContainsKey("name") ? work["name"].ToString() : string.Empty
+                };
+            }
+            else
+                return new CourseWork();
+        }
+
+        /// <summary>
         /// Сохраняет текущий объект CourseWork в БД
         /// </summary>
         /// <param name="authorId">автор</param>
@@ -165,11 +191,85 @@ namespace ElJournal.Models
         public string ID { get; set; }
         public string Name { get; set; }
         public string Info { get; set; }
+
+        /// <summary>
+        /// Возвращает этап (процентовку) курсовой работу по указанному ID
+        /// </summary>
+        /// <param name="id">id этапа курсовой работы</param>
+        /// <returns></returns>
+        public static async Task<CourseWorkStage> GetInstanceAsync(string id)
+        {
+            string sqlQuery = "select * from CourseWorkStages where ID=@id";
+            var parameters = new Dictionary<string, string>
+            {
+                { "@id", id }
+            };
+            DB db = DB.GetInstance();
+            var result = await db.ExecSelectQuerySingleAsync(sqlQuery, parameters);
+            return new CourseWorkStage
+            {
+                ID = result.ContainsKey("ID") ? result["ID"].ToString() : string.Empty,
+                Name = result.ContainsKey("name") ? result["name"].ToString() : string.Empty,
+                Info = result.ContainsKey("info") ? result["info"].ToString() : string.Empty
+            };
+        }
+
+
     }
 
-    public class CourseWorkExecutionModels : CourseWork
+    public class CourseWorkExecution
     {
+        public string ID { get; set; }
         public string Info { get; set; }
         public DateTime Date { get; set; }
+        public bool State { get; set; }
+        public CourseWork CWork { get; set; }
+
+
+        /// <summary>
+        /// Возвращает состояние выполнения студентом курсовой работы
+        /// </summary>
+        /// <param name="studentID">id этапа курсовой работы</param>
+        /// <returns></returns>
+        public static async Task<CourseWorkExecution> GetInstanceAsync(string studentID)
+        {
+            string sqlQuery = "select * from CourseWorkExecution where StudentGroupSemesterID=@studentId";
+            var parameters = new Dictionary<string, string>
+            {
+                { "@studentId", studentID }
+            };
+            DB db = DB.GetInstance();
+            var result = await db.ExecSelectQuerySingleAsync(sqlQuery, parameters);
+            if (result != null)
+            {
+                var work = new CourseWorkExecution
+                {
+                    ID = result.ContainsKey("ID") ? result["ID"].ToString() : string.Empty,
+                    Info = result.ContainsKey("info") ? result["info"].ToString() : string.Empty,
+                    Date = result.ContainsKey("date") ? result["date"] : string.Empty,
+                    State = result.ContainsKey("state") ? result["state"].ToString() : string.Empty
+                };
+                work.CWork = result.ContainsKey("CourseWorkPlanID") ?
+                    CourseWork.GetCWorkFromPlan(result["CourseWorkPlanID"].ToString()) : null;
+                return work;
+            }
+            else
+                return null;
+        }
+
+        /// <summary>
+        /// Обновляет в БД выбранный объект (по ID)
+        /// </summary>
+        /// <returns></returns>
+        public async Task<bool> Update()
+        {
+            string procName = "dbo.UpdateCourseWorkExecution";
+            var parameters = new Dictionary<string, string>();
+            DB db = DB.GetInstance();
+            parameters.Add("@ID", ID);
+            parameters.Add("@info", Info);
+            parameters.Add("@state", Convert.ToInt16(State).ToString());
+            return Convert.ToBoolean(await db.ExecStoredProcedureAsync(procName, parameters));
+        }
     }
 }
