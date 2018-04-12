@@ -29,14 +29,17 @@ namespace ElJournal.Models
             parameters.Add("@id", id);
             DB db = DB.GetInstance();
             var result = await db.ExecSelectQuerySingleAsync(sqlQuery, parameters);
-            return new CourseWork
-            {
-                ID = result.ContainsKey("ID") ? result["ID"].ToString() : string.Empty,
-                Name = result.ContainsKey("name") ? result["name"].ToString() : string.Empty,
-                FileName = result.ContainsKey("fileName") ? result["fileName"].ToString() : string.Empty,
-                Advanced = result.ContainsKey("advanced") ? result["advanced"].ToString() : string.Empty,
-                Description = result.ContainsKey("description") ? result["description"].ToString() : string.Empty
-            };
+            if (result != null)
+                return new CourseWork
+                {
+                    ID = result.ContainsKey("ID") ? result["ID"].ToString() : string.Empty,
+                    Name = result.ContainsKey("name") ? result["name"].ToString() : string.Empty,
+                    FileName = result.ContainsKey("fileName") ? result["fileName"].ToString() : string.Empty,
+                    Advanced = result.ContainsKey("advanced") ? result["advanced"].ToString() : string.Empty,
+                    Description = result.ContainsKey("description") ? result["description"].ToString() : string.Empty
+                };
+            else
+                return null;
         }
 
 
@@ -213,7 +216,7 @@ namespace ElJournal.Models
                     ID = result.ContainsKey("ID") ? result["ID"].ToString() : string.Empty,
                     Name = result.ContainsKey("name") ? result["name"].ToString() : string.Empty,
                     Info = result.ContainsKey("info") ? result["info"].ToString() : string.Empty,
-                    SubjectGroupSemesterId = obj.ContainsKey("SubjectGroupSemesterID") ? obj["SubjectGroupSemesterID"] : string.Empty
+                    SubjectGroupSemesterId = result.ContainsKey("SubjectGroupSemesterID") ? result["SubjectGroupSemesterID"] : string.Empty
                 };
             else
                 return null;
@@ -225,7 +228,7 @@ namespace ElJournal.Models
         /// <returns></returns>
         public static async Task<List<CourseWorkStage>> GetCollectionAsync()
         {
-            string sqlQuery = "select * from CourseWorkStage";
+            string sqlQuery = "select * from CourseWorkStages";
             DB db = DB.GetInstance();
             var result = await db.ExecSelectQueryAsync(sqlQuery);
             var labWorks = new List<CourseWorkStage>(result.Count);

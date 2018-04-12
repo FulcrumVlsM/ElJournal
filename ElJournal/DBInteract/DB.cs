@@ -157,6 +157,10 @@ namespace ElJournal.DBInteract
                     set.Add(row);
                 }
                 conn.Close();
+                if (set.Count == 0)
+                    return null;
+                else
+                    return set[0];
             }
             catch (SqlException e)
             {
@@ -164,8 +168,6 @@ namespace ElJournal.DBInteract
                 conn.Close();
                 throw e;
             }
-
-            return set[0];
         }
 
 
