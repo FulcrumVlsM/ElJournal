@@ -223,15 +223,31 @@ namespace ElJournal.Controllers
                 if(commonRight || teacherRight)
                 {
                     DB db = DB.GetInstance();
-                    bool result = Convert.ToBoolean(await db.ExecStoredProcedureAsync(procName1, parameters));
-                    if(result)
-                        return Request.CreateResponse(HttpStatusCode.Created);
-                    else
+                    if (state) //если нужно добавить факт сдачи
                     {
-                        Logger logger = LogManager.GetCurrentClassLogger();
-                        logger.Warn(string.Format("Не удалось поставить процент курсовой \"{0}\" студенту \"{1}\".",
-                            stageId, studentId));
-                        return Request.CreateResponse(HttpStatusCode.BadRequest);
+                        bool result = Convert.ToBoolean(await db.ExecStoredProcedureAsync(procName1, parameters));
+                        if (result)
+                            return Request.CreateResponse(HttpStatusCode.Created);
+                        else
+                        {
+                            Logger logger = LogManager.GetCurrentClassLogger();
+                            logger.Warn(string.Format("Не удалось поставить процент курсовой \"{0}\" студенту \"{1}\".",
+                                stageId, studentId));
+                            return Request.CreateResponse(HttpStatusCode.BadRequest);
+                        }
+                    }
+                    else //если нужно удалить существующий факт сдачи
+                    {
+                        int result = db.ExecInsOrDelQuery(sqlQuery2, parameters);
+                        if (result == 1)
+                            return Request.CreateResponse(HttpStatusCode.OK);
+                        else
+                        {
+                            Logger logger = LogManager.GetCurrentClassLogger();
+                            logger.Warn(string.Format("Процента курсовой \"{0}\" у студента \"{1}\" не существует. Result={2}.",
+                                stageId, studentId, result));
+                            return Request.CreateResponse(HttpStatusCode.BadRequest);
+                        }
                     }
                 }
                 else
@@ -252,16 +268,84 @@ namespace ElJournal.Controllers
         [Route("api/CourseWork/stage/{id}")]
         public async Task<HttpResponseMessage> PutStage(string id, [FromBody]CourseWorkStage stage)
         {
-            return Request.CreateResponse(HttpStatusCode.NotFound);
+            //идентификация пользователя
+            string token = Request?.Headers?.Authorization?.Scheme;
+            NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
+
+            if (authProvider != null)
+            {
+                //проверка наличия прав на операцию
+                bool commonRight = default(bool),
+                    teacherRight = default(bool);
+                Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.CRSWRK_COMMON_PERMISSION),
+                    () => teacherRight = authProvider.CheckPermission(Permission.CRSWRK_PERMISSION) ?
+                                         authProvider.Subjects.Contains(stage.SubjectGroupSemesterId ?? string.Empty) : false);
+
+                stage.ID = id;
+                try
+                {
+                    if (await stage.Update())
+                        return Request.CreateResponse(HttpStatusCode.OK);
+                    else
+                    {
+                        Logger logger = LogManager.GetCurrentClassLogger();
+                        logger.Warn(string.Format("Не удалось изменить процент курсовой \"{0}\".", stage.ID));
+                        return Request.CreateResponse(HttpStatusCode.BadRequest);
+                    }
+                }
+                catch(Exception e)
+                {
+                    Logger logger = LogManager.GetCurrentClassLogger();
+                    logger.Fatal(e.ToString());//запись лога с ошибкой
+                    return Request.CreateResponse(HttpStatusCode.InternalServerError);
+                }
+            }
+            else
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
         }
 
 
+        // DELETE: api/CourseWork/Stage/5
         // удалить этап процентовки (преподаватель, администратор)
         [HttpDelete]
         [Route("api/CourseWork/stage/{id}")]
-        public HttpResponseMessage DeleteStage(string id)
+        public async Task<HttpResponseMessage> DeleteStage(string id)
         {
-            return Request.CreateResponse(HttpStatusCode.NotFound);
+            //идентификация пользователя
+            string token = Request?.Headers?.Authorization?.Scheme;
+            NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
+
+            if (authProvider != null)
+            {
+                var stage = await CourseWorkStage.GetInstanceAsync(id);
+                
+                //проверка наличия прав на операцию
+                bool commonRight = default(bool),
+                    teacherRight = default(bool);
+                Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.CRSWRK_COMMON_PERMISSION),
+                    () => teacherRight = authProvider.CheckPermission(Permission.CRSWRK_PERMISSION) ?
+                                         authProvider.Subjects.Contains(stage?.SubjectGroupSemesterId ?? string.Empty) : false);
+
+                try
+                {
+                    if(stage.Delete())
+                        return Request.CreateResponse(HttpStatusCode.OK);
+                    else
+                    {
+                        Logger logger = LogManager.GetCurrentClassLogger();
+                        logger.Warn(string.Format("Не удалось удалить процент курсовой \"{0}\".", stage.ID));
+                        return Request.CreateResponse(HttpStatusCode.BadRequest);
+                    }
+                }
+                catch (Exception e)
+                {
+                    Logger logger = LogManager.GetCurrentClassLogger();
+                    logger.Fatal(e.ToString());//запись лога с ошибкой
+                    return Request.CreateResponse(HttpStatusCode.InternalServerError);
+                }
+            }
+            else
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
         }
     }
 }
