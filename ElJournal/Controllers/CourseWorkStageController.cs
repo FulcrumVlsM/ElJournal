@@ -102,11 +102,11 @@ namespace ElJournal.Controllers
         // получить выполненные процентовки курсовых работ студентом (все рег. пользователи)
         //TODO: метод еще пустой
         [HttpGet]
-        [Route("api/CourseWork/stage/{studentId}")]
+        [Route("api/CourseWork/stage/{studentId}/state")]
         public async Task<HttpResponseMessage> GetStageExecution(string studentId)
         {
             Response response = new Response();
-            string sqlQuery = "select * ExecutedCourseWorkStages(@studentId)";
+            string sqlQuery = "select * from ExecutedCourseWorkStages(@studentId)";
 
             //идентификация пользователя
             string token = Request?.Headers?.Authorization?.Scheme;

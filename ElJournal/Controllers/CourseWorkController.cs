@@ -255,8 +255,7 @@ namespace ElJournal.Controllers
         // установить курсовую работу студенту (администратор, преподаватель)
         [HttpPost]
         [Route("api/CourseWork/exec/{subjectId}/{workId}/{studentId}")]
-        public async Task<HttpResponseMessage> PostExec(string subjectId, string workId, string studentId,
-            [FromBody] CourseWorkExecution execution)
+        public async Task<HttpResponseMessage> PostExec(string subjectId, string workId, string studentId)
         {
             string procName = "dbo.MountCourseWorkToExec"; //хранимая процедура, выполняющая необходимые действия
 
@@ -361,6 +360,8 @@ namespace ElJournal.Controllers
 
         // PUT: api/CourseWork/5
         // изменить данные о курсовой работе (администратор, создатель)
+        [HttpPut]
+        [Route("api/CourseWork/{id}")]
         public async Task<HttpResponseMessage> Put(string id, [FromBody]CourseWork courseWork)
         {
             //идентификация пользователя
@@ -399,6 +400,8 @@ namespace ElJournal.Controllers
 
         // DELETE: api/CourseWork/5
         // удалить курсовую работу (администратор, создатель)
+        [HttpDelete]
+        [Route("api/CourseWork/{id}")]
         public async Task<HttpResponseMessage> Delete(string id)
         {
             //идентификация пользователя
