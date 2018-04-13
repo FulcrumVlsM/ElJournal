@@ -125,12 +125,14 @@ namespace ElJournal.Models
         /// <returns>True, если объект был добавлен в БД</returns>
         public async Task<bool> Push(string authorId)
         {
-            var parameters = new Dictionary<string, string>();
             string procName = "dbo.AddCourseWork";
-            parameters.Add("@name", Name);
-            parameters.Add("@advanced", Advanced);
-            parameters.Add("@description", Description);
-            parameters.Add("@authorId", authorId);
+            var parameters = new Dictionary<string, string>
+            {
+                { "@name", Name },
+                { "@advanced", Advanced },
+                { "@description", Description },
+                { "@authorId", authorId }
+            };
             DB db = DB.GetInstance();
             return Convert.ToBoolean(await db.ExecStoredProcedureAsync(procName, parameters));
         }
@@ -157,11 +159,14 @@ namespace ElJournal.Models
         public async Task<bool> Update()
         {
             string procName = "dbo.UpdateCourseWork";
-            var parameters = new Dictionary<string, string>();
+            var parameters = new Dictionary<string, string>
+            {
+                { "@ID", ID },
+                { "@name", Name },
+                { "@advanced", Advanced },
+                { "@description", Description }
+            };
             DB db = DB.GetInstance();
-            parameters.Add("@ID", ID);
-            parameters.Add("@name", Name);
-            parameters.Add("@advanced", Advanced);
             return Convert.ToBoolean(await db.ExecStoredProcedureAsync(procName, parameters));
         }
 

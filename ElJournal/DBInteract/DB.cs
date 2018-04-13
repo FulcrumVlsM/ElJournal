@@ -538,6 +538,9 @@ namespace ElJournal.DBInteract
         public const string CRSWRK_PERMISSION = "CRSWRK_PERMISSION";
         public const string CRSWRK_COMMON_PERMISSION = "CRSWRK_COMMON_PERMISSION";
 
+        public const string GROUP_PERMISSION = "GROUP_PERMISSION";
+        public const string GROUP_COMMON_PERMISSION = "GROUP_COMMON_PERMISSION";
+
 
     }
 }

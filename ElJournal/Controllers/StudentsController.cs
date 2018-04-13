@@ -13,6 +13,14 @@ namespace ElJournal.Controllers
     //develop: Mikhail
     public class StudentsController : ApiController
     {
+        // получить id студента для всех семестров по указанному пользователю (все)
+        // получить студентов указанной группы в указанном семестре (все)
+        // получить студентов указанного предмета с учетом игнор-списка (все)
+        // добавить пользователя в группу в указанный семестр (администратор факультета, администратор)
+        // установить игнорирование студента для данного предмета (администратор, администратор кафедры, преподаватель)
+        // удалить пользователя из группы в указанном семестре (администратор факультета, администратор)
+        // удалить игнорирование студента для данного предмета (администратор, администратор кафедры, преподаватель)
+
         private static string table1 = "StudentsGroupsSemesters";
         private static string table2 = "People";
         private static string table3 = "Groups";
@@ -61,7 +69,7 @@ namespace ElJournal.Controllers
                     group = new Group //информация о группе
                     {
                         ID = group["ID"],
-                        name = group["name"]
+                        Name = group["name"]
                     }
                 };
                 response.Succesful = true;
