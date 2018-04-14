@@ -23,25 +23,34 @@ namespace ElJournal.Models
         /// <returns></returns>
         public static async Task<Group> GetInstanceAsync(string id)
         {
-            string sqlQuery = "select * from Groups where ID=@id";
-            var parameters = new Dictionary<string, string>
+            try
+            {
+                string sqlQuery = "select * from Groups where ID=@id";
+                var parameters = new Dictionary<string, string>
             {
                 { "@id", id }
             };
-            DB db = DB.GetInstance();
-            var result = await db.ExecSelectQuerySingleAsync(sqlQuery, parameters);
+                DB db = DB.GetInstance();
+                var result = await db.ExecSelectQuerySingleAsync(sqlQuery, parameters);
 
-            if (result != null)
-                return new Group
-                {
-                    ID = result.ContainsKey("ID") ? result["ID"].ToString() : null,
-                    Name = result.ContainsKey("name") ? result["name"].ToString() : null,
-                    Description = result.ContainsKey("description") ? result["description"].ToString() : null,
-                    CuratorId = result.ContainsKey("curatorPersonID") ? result["curatorPersonID"].ToString() : null,
-                    FacultyId = result.ContainsKey("FacultyID") ? result["FacultyID"].ToString() : null
-                };
-            else
+                if (result != null)
+                    return new Group
+                    {
+                        ID = result.ContainsKey("ID") ? result["ID"].ToString() : null,
+                        Name = result.ContainsKey("name") ? result["name"].ToString() : null,
+                        Description = result.ContainsKey("description") ? result["description"].ToString() : null,
+                        CuratorId = result.ContainsKey("curatorPersonID") ? result["curatorPersonID"].ToString() : null,
+                        FacultyId = result.ContainsKey("FacultyID") ? result["FacultyID"].ToString() : null
+                    };
+                else
+                    return null;
+            }
+            catch(Exception e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Fatal(e.ToString());
                 return null;
+            }
         }
 
         /// <summary>
@@ -50,21 +59,29 @@ namespace ElJournal.Models
         /// <returns></returns>
         public static async Task<List<Group>> GetCollectionAsync()
         {
-            string sqlQuery = "select * from Groups";
-            DB db = DB.GetInstance();
-            var result = await db.ExecSelectQueryAsync(sqlQuery);
-            var labWorks = new List<Group>(result.Count);
-            foreach (var obj in result)
+            try
             {
-                labWorks.Add(new Group
+                string sqlQuery = "select * from Groups";
+                DB db = DB.GetInstance();
+                var result = await db.ExecSelectQueryAsync(sqlQuery);
+                var labWorks = new List<Group>(result.Count);
+                foreach (var obj in result)
                 {
-                    ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : null,
-                    Name = obj.ContainsKey("name") ? obj["name"].ToString() : null,
-                    FacultyId = obj.ContainsKey("FacultyID") ? obj["FacultyID"] : null
-                });
+                    labWorks.Add(new Group
+                    {
+                        ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : null,
+                        Name = obj.ContainsKey("name") ? obj["name"].ToString() : null,
+                        FacultyId = obj.ContainsKey("FacultyID") ? obj["FacultyID"] : null
+                    });
+                }
+                return labWorks;
             }
-
-            return labWorks;
+            catch(Exception e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Fatal(e.ToString());
+                return null;
+            }
         }
 
         /// <summary>
