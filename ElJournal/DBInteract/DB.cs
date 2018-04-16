@@ -230,6 +230,10 @@ namespace ElJournal.DBInteract
                 try
                 {
                     result = await query.ExecuteScalarAsync();//выполнение запроса
+                    if (result is DBNull)
+                        result = null;
+                    conn.Close();//закрытие подклчения
+                    return result;
                 }
                 catch(SqlException e)
                 {
@@ -237,9 +241,6 @@ namespace ElJournal.DBInteract
                     conn.Close();
                     throw e;
                 }
-
-                conn.Close();//закрытие подклчения
-                return result;
             });
         }
 
