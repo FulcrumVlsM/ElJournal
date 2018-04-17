@@ -36,7 +36,7 @@ namespace ElJournal.Controllers
             Response response = new Response();
             var subjects = await Subject.GetCollectionAsync();
             if (!string.IsNullOrEmpty(department))
-                subjects = subjects.FindAll(x => string.Compare(x.Name, department) == 0);
+                subjects = subjects.FindAll(x => x.DepartmentID == department);
             if(!string.IsNullOrEmpty(name))
             {
                 Regex regex = new Regex(name);
@@ -70,15 +70,15 @@ namespace ElJournal.Controllers
         {
             Response response = new Response();
             var subjects = await SubjectGroupSemester.GetCollectionAsync();
-            subjects = subjects.FindAll(x => string.Compare(x.SemesterId, semesterId) == 0); //фильтр по семестру
+            subjects = subjects.FindAll(x => x.SemesterId == semesterId); //фильтр по семестру
             if (department != null) //фильтр по кафедре
                 subjects = subjects.FindAll(x =>
                 {
                     Subject subject = Subject.GetInstanceAsync(x.SubjectId).Result;
-                    return string.Compare(subject.DepartmentID, department) == 0;
+                    return subject.DepartmentID == department;
                 });
             if (string.IsNullOrEmpty(groupId)) //фильтр по группе
-                subjects = subjects.FindAll(x => string.Compare(x.GroupId, groupId) == 0);
+                subjects = subjects.FindAll(x => x.GroupId == groupId);
 
             response.Data = subjects;
             return Request.CreateResponse(HttpStatusCode.OK, response);

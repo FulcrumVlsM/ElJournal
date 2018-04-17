@@ -25,63 +25,48 @@ namespace ElJournal.Controllers
         private static string table2 = "People";
         private static string table3 = "Groups";
 
-        // GET: api/Students
-        public dynamic Get()
+        // GET: api/Students/user/5
+        // получить id студента для всех семестров по указанному пользователю (все)
+        [HttpGet]
+        [Route("api/Students/user/{personId}")]
+        public async Task<HttpResponseMessage> GetByUser(string personId)
         {
-            return null;
+            Response response = new Response();
+            response.Data = await Student.GetStudents(personId);
+            if (response.Data.Count > 0)
+                return Request.CreateResponse(HttpStatusCode.OK, response);
+            else
+                return Request.CreateResponse(HttpStatusCode.NotFound);
         }
 
-        // GET: api/Students/5
-        public async Task<dynamic> Get(string id)
+        // GET: api/Students/group/5/5
+        // получить студентов указанной группы в указанном семестре (все)
+        [HttpGet]
+        [Route("api/Students/group/{semesterId}/{groupId}")]
+        public async Task<HttpResponseMessage> GetByGroup(string semesterId, string groupId)
         {
-            //общие данные пользователя
-            //группа
             Response response = new Response();
-            Dictionary<string, string> parameters = new Dictionary<string, string>();
+            response.Data = await Student.GetGroupStudent(semesterId, groupId);
+            if(response.Data.Count>0)
+                return Request.CreateResponse(HttpStatusCode.OK, response);
+            else
+                return Request.CreateResponse(HttpStatusCode.NotFound);
+        }
 
-            //получение id пользователя
-            string sqlQuery1 = string.Format("select PersonID from {0} where ID=@studentId",table1);
-            //получение id ГруппыСеместр
-            string sqlQuery2 = string.Format("select GroupSemesterID from {0} where ID=@studentId", table1);
-            //получение данных пользователя
-            string sqlQuery3 = string.Format("select ID,name from {0} where ID=@personId", table2);
-            //получение данных группы
-            string sqlQuery4 = string.Format("select ID,name,info from {0} where ID=dbo.GetGroup(@groupSemester)",
-                table3);
 
-            try
-            {
-                DB db = DB.GetInstance();
-                parameters.Add("@studentId", id);
-                parameters.Add("@personId", await db.ExecuteScalarQueryAsync(sqlQuery1, parameters));
-                parameters.Add("@groupSemester", await db.ExecuteScalarQueryAsync(sqlQuery2, parameters));
+        // GET: api/Students/subject/5
+        // получить студентов указанного предмета с учетом игнор-списка (все)
+        [HttpGet]
+        [Route("api/Students/subject/{subjectGroupSemesterId}")]
+        public async Task<HttpResponseMessage> GetBySubject(string subjectGroupSemesterId)
+        {
+            Response response = new Response();
+            response.Data = await Student.GetSubjectStudents(subjectGroupSemesterId);
+            if (response.Data.Count > 0)
+                return Request.CreateResponse(HttpStatusCode.OK, response);
+            else
+                return Request.CreateResponse(HttpStatusCode.NotFound);
 
-                var person = (await db.ExecSelectQueryAsync(sqlQuery3, parameters))[0];
-                var group = (await db.ExecSelectQueryAsync(sqlQuery4, parameters))[0];
-
-                response.Data = new //формирование результата запроса
-                {
-                    person = new Person //информация о пользователе
-                    {
-                        ID = person["ID"],
-                        name = person["name"]
-                    },
-                    group = new Group //информация о группе
-                    {
-                        ID = group["ID"],
-                        Name = group["name"]
-                    }
-                };
-                response.Succesful = true;
-            }
-            catch(Exception e)
-            {
-                response.Error = e.ToString();
-                response.message = e.Message;
-                //TODO: add log
-            }
-
-            return response;
         }
 
         // POST: api/Students
