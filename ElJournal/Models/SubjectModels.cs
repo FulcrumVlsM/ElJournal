@@ -184,31 +184,13 @@ namespace ElJournal.Models
         }
     }
 
-    public class SubjectGroupSemester
+    public class FlowSubject
     {
-        public string ID
-        {
-            get { return _ID; }
-            set
-            {
-                DB db = DB.GetInstance();
-                string sqlQuery = "select dbo.GetGroupSemester(@semesterId,@groupId)";
-                var parameters = new Dictionary<string, string>
-                {
-                    { "@groupId", GroupId },
-                    { "@semesterId", SemesterId }
-                };
-                _groupSemesterId = db.ExecuteScalarQueryAsync(sqlQuery, parameters).Result;
-                _ID = value;
-            }
-        }
-        public string GroupId { get; set; }
-        public string SemesterId { get; set; }
+        public string ID { get; set; }
+        public string FlowId { get; set; }
+        public string TeacherId { get; set; }
         public string SubjectId { get; set; }
-        public string TeacherPersonId { get; set; }
-
-        private string _ID;
-        private string _groupSemesterId;
+        public string SemesterId { get; set; }
 
 
         /// <summary>
@@ -216,9 +198,9 @@ namespace ElJournal.Models
         /// </summary>
         /// <param name="id">id предмета</param>
         /// <returns></returns>
-        public static async Task<SubjectGroupSemester> GetInstanceAsync(string id)
+        public static async Task<FlowSubject> GetInstanceAsync(string id)
         {
-            string sqlQuery = "select * from SubjectsGroupsSemesters where ID=@id";
+            string sqlQuery = "select * from FlowsSubjects where ID=@id";
             var parameters = new Dictionary<string, string>
             {
                 { "@id", id }
@@ -228,13 +210,13 @@ namespace ElJournal.Models
                 DB db = DB.GetInstance();
                 var obj = await db.ExecSelectQuerySingleAsync(sqlQuery, parameters);
                 if (obj != null)
-                    return new SubjectGroupSemester
+                    return new FlowSubject
                     {
                         ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : null,
-                        GroupId = obj.ContainsKey("GroupsID") ? obj["GroupsID"].ToString() : null,
-                        SemesterId = obj.ContainsKey("SemesterID") ? obj["SemesterID"] : null,
+                        FlowId = obj.ContainsKey("FlowID") ? obj["FlowID"].ToString() : null,
+                        TeacherId = obj.ContainsKey("TeacherID") ? obj["TeacherID"] : null,
                         SubjectId = obj.ContainsKey("SubjectID") ? obj["SubjectID"] : null,
-                        TeacherPersonId = obj.ContainsKey("teacherPersonID") ? obj["teacherPersonID"] : null
+                        SemesterId = obj.ContainsKey("SemesterID") ? obj["SemesterID"] : null
                     };
                 else
                     return null;
@@ -251,23 +233,23 @@ namespace ElJournal.Models
         /// Возвращает полный список предмет-группа-семестр
         /// </summary>
         /// <returns></returns>
-        public static async Task<List<SubjectGroupSemester>> GetCollectionAsync()
+        public static async Task<List<FlowSubject>> GetCollectionAsync()
         {
-            string sqlQuery = "select * from dbo.GetSubjectsGroupsSemesters";
+            string sqlQuery = "select * from FlowsSubjects";
             try
             {
                 DB db = DB.GetInstance();
                 var result = await db.ExecSelectQueryAsync(sqlQuery);
-                var subjects = new List<SubjectGroupSemester>(result.Count);
+                var subjects = new List<FlowSubject>(result.Count);
                 foreach (var obj in result)
                 {
-                    subjects.Add(new SubjectGroupSemester
+                    subjects.Add(new FlowSubject
                     {
                         ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : null,
-                        GroupId = obj.ContainsKey("GroupsID") ? obj["GroupsID"].ToString() : null,
-                        SemesterId = obj.ContainsKey("SemesterID") ? obj["SemesterID"] : null,
+                        FlowId = obj.ContainsKey("FlowID") ? obj["FlowID"].ToString() : null,
+                        TeacherId = obj.ContainsKey("TeacherID") ? obj["TeacherID"] : null,
                         SubjectId = obj.ContainsKey("SubjectID") ? obj["SubjectID"] : null,
-                        TeacherPersonId = obj.ContainsKey("teacherPersonID") ? obj["teacherPersonID"] : null
+                        SemesterId = obj.ContainsKey("SemesterID") ? obj["SemesterID"] : null
                     });
                 }
 
@@ -277,7 +259,7 @@ namespace ElJournal.Models
             {
                 Logger logger = LogManager.GetCurrentClassLogger();
                 logger.Fatal(e.ToString());//запись лога с ошибкой
-                return new List<SubjectGroupSemester>();
+                return new List<FlowSubject>();
             }
         }
 
@@ -286,22 +268,22 @@ namespace ElJournal.Models
         /// </summary>
         /// <param name="subjectList"></param>
         /// <returns></returns>
-        public static List<SubjectGroupSemester> ToSubjects(List<Dictionary<string, dynamic>> subjectList)
+        public static List<FlowSubject> ToSubjects(List<Dictionary<string, dynamic>> subjectList)
         {
             if (subjectList.Count == 0)
                 return null;
             else
             {
-                var subjects = new List<SubjectGroupSemester>(subjectList.Count);
+                var subjects = new List<FlowSubject>(subjectList.Count);
                 foreach (var obj in subjectList)
                 {
-                    subjects.Add(new SubjectGroupSemester
+                    subjects.Add(new FlowSubject
                     {
                         ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : null,
-                        GroupId = obj.ContainsKey("GroupsID") ? obj["GroupsID"].ToString() : null,
-                        SemesterId = obj.ContainsKey("SemesterID") ? obj["SemesterID"] : null,
+                        FlowId = obj.ContainsKey("FlowID") ? obj["FlowID"].ToString() : null,
+                        TeacherId = obj.ContainsKey("TeacherID") ? obj["TeacherID"] : null,
                         SubjectId = obj.ContainsKey("SubjectID") ? obj["SubjectID"] : null,
-                        TeacherPersonId = obj.ContainsKey("teacherPersonID") ? obj["teacherPersonID"] : null
+                        SemesterId = obj.ContainsKey("SemesterID") ? obj["SemesterID"] : null
                     });
                 }
                 return subjects;
@@ -314,20 +296,18 @@ namespace ElJournal.Models
         /// <returns>True, если объект был добавлен в БД</returns>
         public async Task<bool> Push()
         {
-            string procName = "dbo.AddSubjectGroupSemester"; //процедура для добавления сущности в БД
+            string procName = "dbo.AddFlowSubject"; //процедура для добавления сущности в БД
             var parameters = new Dictionary<string, string>
             {
-                {"@SubjectId", SubjectId },
-                {"@TeacherId", TeacherPersonId },
-                {"@GroupSemesterId", _groupSemesterId }
+                {"@flowId", FlowId },
+                {"@teacherId", TeacherId },
+                {"@subjectId", SubjectId },
+                {"@semesterId", SemesterId }
             };
             try
             {
                 DB db = DB.GetInstance();
-                if (!string.IsNullOrEmpty(_groupSemesterId))
-                    return Convert.ToBoolean(await db.ExecStoredProcedureAsync(procName, parameters));
-                else
-                    return false;
+                return Convert.ToBoolean(await db.ExecStoredProcedureAsync(procName, parameters));
             }
             catch (Exception e)
             {
@@ -343,13 +323,10 @@ namespace ElJournal.Models
         /// <returns></returns>
         public bool Delete()
         {
-            string procName = "delete from SubjectsGroupsSemesters where GroupSemestrID=@groupSemesterId and SubjectID=@subjectId " +
-                " and teacherPersonID=@teacherId";
+            string procName = "dbo.DeleteFlowSubject";
             var parameters = new Dictionary<string, string>
             {
-                { "@groupSemesterId", _groupSemesterId },
-                {"@subjectId", SubjectId },
-                {"@teacherId", TeacherPersonId }
+                { "@id", ID }
             };
             try
             {

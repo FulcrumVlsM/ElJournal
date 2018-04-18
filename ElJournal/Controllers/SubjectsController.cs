@@ -14,19 +14,15 @@ namespace ElJournal.Controllers
 {
     public class SubjectsController : ApiController
     {
-        //получить общий список предметов (все)
-        //получить конкретный предмет по id (все)
-        //получить список предметов с преподавателями в указанном семестре
-                        //(предмет-группа-семестр) (все рег. пользователи)
+        // получить общий список предметов (все)
+        // получить конкретный предмет по id (все)
+        // добавить новый предмет (администратор, администратор кафедры)
+        // изменить информацию о предмете (администратор, администратор кафедры)
+        // удалить предмет (администратор, администратор кафедры)
 
-        //добавить новый предмет (администратор, администратор кафедры)
-        //установить предмет для группы в указанном семестре (администратор, администратор кафедры)
-
-        //изменить информацию о предмете (администратор, администратор кафедры)
-        //изменить преподавателя по предмету для группы в указанном семестре (администратор, администратор кафедры)
-
-        //удалить предмет из плана для группы в указанном семестре (администратор, администратор кафедры)
-        //удалить предмет (администратор, администратор кафедры)
+        // получить общий список поток-предмет-семестр (все)
+        // добавить поток-предмет-семестр (администратор, администратор кафедры)
+        // удалить поток-предмет-семестр (администратор, администратор кафедры)
 
 
         // GET: api/Subjects
@@ -61,27 +57,33 @@ namespace ElJournal.Controllers
                 return Request.CreateResponse(HttpStatusCode.NotFound);
         }
 
-        // GET: api/Subjects/ByGroup/5
-        //получить список предметов с преподавателями в указанном семестре (все)
+
+        // получить общий список поток-предмет-семестр (все)
         [HttpGet]
-        [Route("api/Subjects/SubjectGroup/{semesterId}")]
-        public async Task<HttpResponseMessage> GetSubjectGroup(string semesterId, [FromUri]string department = null,
-            [FromUri]string groupId = null)
+        [Route("api/Subjects/flow")]
+        public async Task<HttpResponseMessage> GetSubjectFlow([FromUri]string flow = null, [FromUri]string teacher = null,
+            [FromUri]string subject = null, [FromUri]string semester = null)
         {
             Response response = new Response();
-            var subjects = await SubjectGroupSemester.GetCollectionAsync();
-            subjects = subjects.FindAll(x => x.SemesterId == semesterId); //фильтр по семестру
-            if (department != null) //фильтр по кафедре
-                subjects = subjects.FindAll(x =>
-                {
-                    Subject subject = Subject.GetInstanceAsync(x.SubjectId).Result;
-                    return subject.DepartmentID == department;
-                });
-            if (string.IsNullOrEmpty(groupId)) //фильтр по группе
-                subjects = subjects.FindAll(x => x.GroupId == groupId);
+            var flowsSubjects = await FlowSubject.GetCollectionAsync();
 
-            response.Data = subjects;
-            return Request.CreateResponse(HttpStatusCode.OK, response);
+            if (!string.IsNullOrEmpty(flow)) //отбор по потоку
+                flowsSubjects = flowsSubjects.FindAll(x => x.FlowId == flow);
+
+            if (!string.IsNullOrEmpty(teacher)) //отбор по преподавателю
+                flowsSubjects = flowsSubjects.FindAll(x => x.TeacherId == teacher);
+
+            if (!string.IsNullOrEmpty(subject)) //отбор по предмету
+                flowsSubjects = flowsSubjects.FindAll(x => x.SubjectId == subject);
+
+            if (!string.IsNullOrEmpty(semester)) //отбор по семестру
+                flowsSubjects = flowsSubjects.FindAll(x => x.SemesterId == semester);
+
+            response.Data = flowsSubjects;
+            if (flowsSubjects.Count > 0)
+                return Request.CreateResponse(HttpStatusCode.OK, response);
+            else
+                return Request.CreateResponse(HttpStatusCode.NoContent, response);
         }
 
 
@@ -117,42 +119,38 @@ namespace ElJournal.Controllers
         }
 
 
-        // POST: api/Subjects
-        //установить предмет для группы в указанном семестре (администратор, администратор кафедры)
+        // добавить поток-предмет-семестр (администратор, администратор кафедры)
         [HttpPost]
-        [Route("api/Subjects/SubjectGroup")]
-        public async Task<dynamic> PostPlan([FromBody]SubjectGroupSemester subjectGroupSemester)
+        [Route("api/Subjects/flow")]
+        public async Task<HttpResponseMessage> PostFlowSubject([FromBody]FlowSubject flowSubject)
         {
             //идентификация пользователя
             string token = Request?.Headers?.Authorization?.Scheme;
             NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
+            if(authProvider == null)
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
 
-            //поиск предмета с указанным id
-            Subject subject = await Subject.GetInstanceAsync(subjectGroupSemester.GroupId);
-            if (subject == null)
+            //поиск предмета
+            Subject subject = await Subject.GetInstanceAsync(flowSubject.SubjectId);
+            if(subject == null)
                 return Request.CreateResponse(HttpStatusCode.BadRequest);
 
-            if (authProvider != null)
-            {
-                //проверка наличия прав доступа
-                bool commonRight = default(bool),
-                    departRight = default(bool);
-                Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.GROUP_COMMON_PERMISSION),
-                    () => departRight = authProvider.CheckPermission(Permission.GROUP_PERMISSION) ?
-                                         authProvider.Departments.Contains(subject.DepartmentID) : false);
+            //проверка наличия прав доступа
+            bool commonRight = default(bool),
+                departRight = default(bool);
+            Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.GROUP_COMMON_PERMISSION),
+                () => departRight = authProvider.CheckPermission(Permission.GROUP_PERMISSION) ?
+                                     authProvider.Departments.Contains(subject.DepartmentID) : false);
 
-                if (commonRight || departRight)
-                {
-                    if(await subjectGroupSemester.Push())
-                        return Request.CreateResponse(HttpStatusCode.Created);
-                    else
-                        return Request.CreateResponse(HttpStatusCode.BadRequest);
-                }
+            if (commonRight || departRight)
+            {
+                if (await flowSubject.Push())
+                    return Request.CreateResponse(HttpStatusCode.OK);
                 else
-                    return Request.CreateResponse(HttpStatusCode.Forbidden);
+                    return Request.CreateResponse(HttpStatusCode.BadRequest);
             }
             else
-                return Request.CreateResponse(HttpStatusCode.Unauthorized);
+                return Request.CreateResponse(HttpStatusCode.Forbidden);
         }
 
 
@@ -191,48 +189,6 @@ namespace ElJournal.Controllers
         }
 
 
-        // DELETE: api/Subjects/plan/5
-        //удалить предмет из плана для группы в указанном семестре (администратор, администратор кафедры)
-        [HttpDelete]
-        [Route("api/Subjects/SubjectGroup/{id}")]
-        public async Task<HttpResponseMessage> DeletePlan(string id)
-        {
-            //идентификация пользователя
-            string token = Request?.Headers?.Authorization?.Scheme;
-            NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
-            if(authProvider == null)
-                return Request.CreateResponse(HttpStatusCode.Unauthorized);
-
-            //поиск предмет-группа-семестр c указанным id
-            SubjectGroupSemester subjectGroupSemester = await SubjectGroupSemester.GetInstanceAsync(id);
-            if(subjectGroupSemester==null)
-                return Request.CreateResponse(HttpStatusCode.BadRequest);
-
-            //поиск предмета с указанным id
-            Subject subject = await Subject.GetInstanceAsync(subjectGroupSemester.SubjectId);
-            if (subject == null)
-                return Request.CreateResponse(HttpStatusCode.BadRequest);
-
-
-            //проверка наличия прав доступа
-            bool commonRight = default(bool),
-                departRight = default(bool);
-            Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.GROUP_COMMON_PERMISSION),
-                () => departRight = authProvider.CheckPermission(Permission.GROUP_PERMISSION) ?
-                                     authProvider.Departments.Contains(subject.DepartmentID) : false);
-
-            if (commonRight || departRight)
-            {
-                if (subjectGroupSemester.Delete())
-                    return Request.CreateResponse(HttpStatusCode.Created);
-                else
-                    return Request.CreateResponse(HttpStatusCode.BadRequest);
-            }
-            else
-                return Request.CreateResponse(HttpStatusCode.Forbidden);
-        }
-
-
         // DELETE: api/Subjects/5
         // удалить предмет (администратор, администратор кафедры)
         [HttpDelete]
@@ -259,6 +215,46 @@ namespace ElJournal.Controllers
             if (commonRight || departRight)
             {
                 if (subject.Delete())
+                    return Request.CreateResponse(HttpStatusCode.OK);
+                else
+                    return Request.CreateResponse(HttpStatusCode.BadRequest);
+            }
+            else
+                return Request.CreateResponse(HttpStatusCode.Forbidden);
+        }
+
+
+        // удалить поток-предмет-семестр (администратор, администратор кафедры)
+        [HttpDelete]
+        [Route("api/Subjects/flow/{id}")]
+        public async Task<HttpResponseMessage> DeleteFlowSubject(string id)
+        {
+            //идентификация пользователя
+            string token = Request?.Headers?.Authorization?.Scheme;
+            NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
+            if (authProvider == null)
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
+
+            //поиск поток-предмета
+            FlowSubject flowSubject = await FlowSubject.GetInstanceAsync(id);
+            if(flowSubject == null)
+                return Request.CreateResponse(HttpStatusCode.BadRequest);
+
+            //поиск предмета
+            Subject subject = await Subject.GetInstanceAsync(flowSubject.SubjectId);
+            if (subject == null)
+                return Request.CreateResponse(HttpStatusCode.BadRequest);
+
+            //проверка наличия прав доступа
+            bool commonRight = default(bool),
+                departRight = default(bool);
+            Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.GROUP_COMMON_PERMISSION),
+                () => departRight = authProvider.CheckPermission(Permission.GROUP_PERMISSION) ?
+                                     authProvider.Departments.Contains(subject.DepartmentID) : false);
+
+            if (commonRight || departRight)
+            {
+                if (flowSubject.Delete())
                     return Request.CreateResponse(HttpStatusCode.OK);
                 else
                     return Request.CreateResponse(HttpStatusCode.BadRequest);

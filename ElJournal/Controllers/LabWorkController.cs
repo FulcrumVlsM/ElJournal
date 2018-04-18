@@ -275,7 +275,7 @@ namespace ElJournal.Controllers
                     bool subjectRight = default(bool);
                     Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.LBWRK_COMMON_PERMISSION),
                         () => subjectRight = authProvider.CheckPermission(Permission.LBWRK_PERMISSION) ?
-                        authProvider.Subjects.Contains(subjectGroupId) : false);
+                        authProvider.FlowsSubjects.Contains(subjectGroupId) : false);
 
                     if (commonRight || subjectRight)
                     {
@@ -352,7 +352,7 @@ namespace ElJournal.Controllers
                     () =>
                     {
                         teacherRight = authProvider.CheckPermission(Permission.LBWRK_PERMISSION) ?
-                             authProvider.Subjects.Contains(subjectId) : false;
+                             authProvider.FlowsSubjects.Contains(subjectId) : false;
                     });
 
 
@@ -569,7 +569,7 @@ namespace ElJournal.Controllers
                 Parallel.Invoke(
                     () => commonRight = authProvider.CheckPermission(Permission.LBWRK_COMMON_PERMISSION),
                     () => teacherRight = authProvider.CheckPermission(Permission.LBWRK_PERMISSION) ?
-                             authProvider.Subjects.Contains(subjectGroupId) : false);
+                             authProvider.FlowsSubjects.Contains(subjectGroupId) : false);
 
                 if (commonRight || teacherRight) //если необходимые разрешения имеются
                 {

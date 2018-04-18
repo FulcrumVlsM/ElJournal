@@ -72,14 +72,14 @@ namespace ElJournal.Providers
         }
 
         /// <summary>
-        /// Список предметов, которые ведет преподаватель
+        /// Список предметов в потоках, которые ведет преподаватель
         /// </summary>
-        public List<string> Subjects
+        public List<string> FlowsSubjects
         {
             get
             {
                 DB db = DB.GetInstance();
-                string sqlQuery = " select ID from dbo.GetTeacherSubjects(@personId)";
+                string sqlQuery = " select ID from dbo.GetSubjectsFlowOfTeacher(@personId)";
                 var parameters = new Dictionary<string, string>();
                 parameters.Add("@personId", PersonId);
                 var list = db.ExecSelectQueryAsync(sqlQuery, parameters).Result;
@@ -208,8 +208,9 @@ namespace ElJournal.Providers
             get
             {
                 DB db = DB.GetInstance();
-                var people = db.People.Where(x => x["token"] == _token);
-                return people.ElementAt(0)["ID"];
+                var people = db.People.Find(x => x["token"] == _token);
+                //var people = db.People.Where(x => x["token"] == _token);
+                return people["ID"];
                 //return (people[0])["ID"];
             }
         }

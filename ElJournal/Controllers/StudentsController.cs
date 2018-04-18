@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Web.Http;
 using ElJournal.Models;
 using ElJournal.DBInteract;
+using ElJournal.Providers;
 
 namespace ElJournal.Controllers
 {
@@ -15,11 +16,12 @@ namespace ElJournal.Controllers
     {
         // получить id студента для всех семестров по указанному пользователю (все)
         // получить студентов указанной группы в указанном семестре (все)
-        // получить студентов указанного предмета с учетом игнор-списка (все)
         // добавить пользователя в группу в указанный семестр (администратор факультета, администратор)
-        // установить игнорирование студента для данного предмета (администратор, администратор кафедры, преподаватель)
         // удалить пользователя из группы в указанном семестре (администратор факультета, администратор)
-        // удалить игнорирование студента для данного предмета (администратор, администратор кафедры, преподаватель)
+
+        // получить записи на потоки по предметам по указанной группе и семестру (все) (с фильтрами)
+        // добавить студента на поток по предмету (администратор кафедры, администратор)
+        // удалить студента из потока по предмету (администратор, администратор кафедры)
 
         private static string table1 = "StudentsGroupsSemesters";
         private static string table2 = "People";
@@ -55,18 +57,32 @@ namespace ElJournal.Controllers
 
 
         // GET: api/Students/subject/5
-        // получить студентов указанного предмета с учетом игнор-списка (все)
+        // получить записи на потоки по предметам по указанной группе и семестру (все)
         [HttpGet]
-        [Route("api/Students/subject/{subjectGroupSemesterId}")]
-        public async Task<HttpResponseMessage> GetBySubject(string subjectGroupSemesterId)
+        [Route("api/Students/flow/{semesterId}")]
+        public async Task<HttpResponseMessage> GetStudentsFlow(string semesterId, [FromUri]string student = null,
+            string flowSubject = null)
         {
             Response response = new Response();
-            response.Data = await Student.GetSubjectStudents(subjectGroupSemesterId);
-            if (response.Data.Count > 0)
+            string sqlQuery = "select * from dbo.GetStudentsFlowSubjects(@semesterId)";
+            var parameters = new Dictionary<string, string>
+            {
+                {"@semesterId", semesterId }
+            };
+            DB db = DB.GetInstance();
+            var result = await db.ExecSelectQueryAsync(sqlQuery, parameters);
+            List<StudentFlowSubject> list = StudentFlowSubject.ToStudentFlowSubject(result);
+
+            if (!string.IsNullOrEmpty(student))//фильтр по студенту
+                list = list.FindAll(x => x.StudentId == student);
+            if (!string.IsNullOrEmpty(flowSubject))//фильтр по поток-предмету
+                list = list.FindAll(x => x.FlowSubjectId == flowSubject);
+
+            response.Data = list;
+            if (list.Count > 0)
                 return Request.CreateResponse(HttpStatusCode.OK, response);
             else
-                return Request.CreateResponse(HttpStatusCode.NotFound);
-
+                return Request.CreateResponse(HttpStatusCode.NoContent);
         }
 
         // POST: api/Students
@@ -84,7 +100,7 @@ namespace ElJournal.Controllers
             {
                 DB db = DB.GetInstance();
                 parameters.Add("@person", authorId);
-                parameters.Add("@group", student.groupId);
+                parameters.Add("@group", student.GroupId);
 
                 //проверка наличия необходимых разрешений
                 bool facultyRight = default(bool), commonRight = default(bool);
@@ -97,13 +113,13 @@ namespace ElJournal.Controllers
                 {
                     //определение id записи ГруппаСеместр (GroupSemesters)
                     parameters.Clear();
-                    parameters.Add("@SemesterID", student.semesterId);
-                    parameters.Add("@GroupID", student.groupId);
+                    parameters.Add("@SemesterID", student.SemesterId);
+                    parameters.Add("@GroupID", student.GroupId);
                     string groupsSemester = await db.ExecuteScalarQueryAsync(sqlQuery2, parameters);
 
                     //добавление связи между человеком и группой
                     parameters.Clear();
-                    parameters.Add("@PersonID", student.personId ?? String.Empty);
+                    parameters.Add("@PersonID", student.PersonId ?? String.Empty);
                     parameters.Add("@GroupSemesterID", groupsSemester ?? String.Empty);
                     int res = await db.ExecInsOrDelQueryAsync(sqlQuery, parameters);
                     if (res == 1)
@@ -124,6 +140,43 @@ namespace ElJournal.Controllers
             }
 
             return response;
+        }
+
+
+        // добавить студента на поток по предмету (администратор факультета, администратор)
+        [HttpPost]
+        [Route("api/Students/flow")]
+        public async Task<HttpResponseMessage> PostStudentFlow([FromBody]StudentFlowSubject studentFlowSubject)
+        {
+            //идентификация пользователя
+            string token = Request?.Headers?.Authorization?.Scheme;
+            NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
+            if (authProvider == null)
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
+
+            FlowSubject flow = await FlowSubject.GetInstanceAsync(studentFlowSubject.FlowSubjectId);
+            Student student = await Student.GetInstanceAsync(studentFlowSubject.StudentId);
+            if(flow == null || student == null)
+                return Request.CreateResponse(HttpStatusCode.BadRequest);
+
+            Group group = await Group.GetInstanceAsync(student.GroupId);
+
+            //проверка наличия прав доступа
+            bool commonRight = default(bool),
+                facultyRight = default(bool);
+            Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.GROUP_COMMON_PERMISSION),
+                () => facultyRight = authProvider.CheckPermission(Permission.GROUP_PERMISSION) ?
+                                     authProvider.Faculties.Contains(group?.FacultyId) : false);
+
+            if(commonRight || facultyRight)
+            {
+                if(await studentFlowSubject.Push())
+                    return Request.CreateResponse(HttpStatusCode.Created);
+                else
+                    return Request.CreateResponse(HttpStatusCode.BadRequest);
+            }
+            else
+                return Request.CreateResponse(HttpStatusCode.Forbidden);
         }
 
 
@@ -172,6 +225,46 @@ namespace ElJournal.Controllers
             }
 
             return response;
+        }
+
+
+        // удалить студента из потока по предмету (администратор, администратор кафедры)
+        [HttpDelete]
+        [Route("api/Students/flow/{id}")]
+        public async Task<HttpResponseMessage> DeleteStudentFlow(string id)
+        {
+            //идентификация пользователя
+            string token = Request?.Headers?.Authorization?.Scheme;
+            NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
+            if (authProvider == null)
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
+
+            StudentFlowSubject studentFlowSubject = await StudentFlowSubject.GetInstanceAsync(id);
+            if(studentFlowSubject == null)
+                return Request.CreateResponse(HttpStatusCode.BadRequest);
+
+            Student student = await Student.GetInstanceAsync(studentFlowSubject.StudentId);
+            if (student == null)
+                return Request.CreateResponse(HttpStatusCode.BadRequest);
+
+            Group group = await Group.GetInstanceAsync(student.GroupId);
+
+            //проверка наличия прав доступа
+            bool commonRight = default(bool),
+                facultyRight = default(bool);
+            Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.GROUP_COMMON_PERMISSION),
+                () => facultyRight = authProvider.CheckPermission(Permission.GROUP_PERMISSION) ?
+                                     authProvider.Faculties.Contains(group?.FacultyId) : false);
+
+            if (commonRight || facultyRight)
+            {
+                if (studentFlowSubject.Delete())
+                    return Request.CreateResponse(HttpStatusCode.Created);
+                else
+                    return Request.CreateResponse(HttpStatusCode.BadRequest);
+            }
+            else
+                return Request.CreateResponse(HttpStatusCode.Forbidden);
         }
     }
 }

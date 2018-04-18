@@ -155,7 +155,7 @@ namespace ElJournal.Controllers
                     teacherRight = default(bool);
                 Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.CRSWRK_COMMON_PERMISSION),
                     () => teacherRight = authProvider.CheckPermission(Permission.CRSWRK_PERMISSION) ?
-                                         authProvider.Subjects.Contains(subjectId) : false);
+                                         authProvider.FlowsSubjects.Contains(subjectId) : false);
 
                 if (commonRight || teacherRight)
                 {
@@ -218,7 +218,7 @@ namespace ElJournal.Controllers
                     teacherRight = default(bool);
                 Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.CRSWRK_COMMON_PERMISSION),
                     () => teacherRight = authProvider.CheckPermission(Permission.CRSWRK_PERMISSION) ?
-                                         authProvider.Subjects.Contains(stage.SubjectGroupSemesterId ?? string.Empty) : false);
+                                         authProvider.FlowsSubjects.Contains(stage.SubjectGroupSemesterId ?? string.Empty) : false);
 
                 if(commonRight || teacherRight)
                 {
@@ -279,7 +279,7 @@ namespace ElJournal.Controllers
                     teacherRight = default(bool);
                 Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.CRSWRK_COMMON_PERMISSION),
                     () => teacherRight = authProvider.CheckPermission(Permission.CRSWRK_PERMISSION) ?
-                                         authProvider.Subjects.Contains(stage.SubjectGroupSemesterId ?? string.Empty) : false);
+                                         authProvider.FlowsSubjects.Contains(stage.SubjectGroupSemesterId ?? string.Empty) : false);
 
                 stage.ID = id;
                 try
@@ -324,7 +324,7 @@ namespace ElJournal.Controllers
                     teacherRight = default(bool);
                 Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.CRSWRK_COMMON_PERMISSION),
                     () => teacherRight = authProvider.CheckPermission(Permission.CRSWRK_PERMISSION) ?
-                                         authProvider.Subjects.Contains(stage?.SubjectGroupSemesterId ?? string.Empty) : false);
+                                         authProvider.FlowsSubjects.Contains(stage?.SubjectGroupSemesterId ?? string.Empty) : false);
 
                 try
                 {

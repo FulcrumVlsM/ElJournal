@@ -211,6 +211,7 @@
     <Compile Include="Controllers\CourseWorkStageController.cs" />
     <Compile Include="Controllers\DepartmentsController.cs" />
     <Compile Include="Controllers\FacultiesController.cs" />
+    <Compile Include="Controllers\FlowsController.cs" />
     <Compile Include="Controllers\GroupsController.cs" />
     <Compile Include="Controllers\HomeController.cs" />
     <Compile Include="Controllers\IndependentWorkController.cs" />
@@ -232,6 +233,7 @@
     <Compile Include="Models\AlertModels.cs" />
     <Compile Include="Models\CourseWorkModels.cs" />
     <Compile Include="Models\DepartmentModels.cs" />
+    <Compile Include="Models\FlowModels.cs" />
     <Compile Include="Models\GroupModels.cs" />
     <Compile Include="Models\IdentityModels.cs" />
     <Compile Include="Models\IndependentWorkModels.cs" />
@@ -385,7 +387,7 @@
     <VisualStudio>
       <FlavorProperties GUID="{349c5851-65df-11da-9384-00065b846f21}">
         <WebProjectProperties>
-          <UseIIS>True</UseIIS>
+          <UseIIS>False</UseIIS>
           <AutoAssignPort>True</AutoAssignPort>
           <DevelopmentServerPort>60647</DevelopmentServerPort>
           <DevelopmentServerVPath>/</DevelopmentServerVPath>
