@@ -15,6 +15,7 @@ namespace ElJournal.Models
         public string GroupId { get; set; }
         public string SemesterId { get; set; }
 
+
         /// <summary>
         /// Возвращает студент-группа-семестр по id
         /// </summary>
@@ -130,6 +131,70 @@ namespace ElJournal.Models
                     });
                 }
                 return subjects;
+            }
+        }
+
+        /// <summary>
+        /// Сохраняет текущий объект StudentGroupSemester в БД
+        /// </summary>
+        /// <returns>True, если объект был добавлен в БД</returns>
+        public async Task<bool> Push()
+        {
+            string sqlQuery1 = "select ID from GroupsSemesters where GroupsID=@groupId and SemesterID=@semesterId";
+            string procName = "dbo.AddStudent"; //процедура для добавления сущности в БД
+            var parameters = new Dictionary<string, string>
+            {
+                {"@personId", PersonId },
+                {"@groupId", GroupId },
+                {"@semesterId", SemesterId }
+            };
+            try
+            {
+                DB db = DB.GetInstance();
+                string groupSemester = await db.ExecuteScalarQueryAsync(sqlQuery1, parameters);
+                if (!string.IsNullOrEmpty(groupSemester))
+                {
+                    parameters.Add("@groupSemesterId", groupSemester);
+                    return Convert.ToBoolean(await db.ExecStoredProcedureAsync(procName, parameters));
+                }
+                return false;
+            }
+            catch (Exception e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Fatal(e.ToString());//запись лога с ошибкой
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Удаление текущего объекта из БД
+        /// </summary>
+        /// <returns></returns>
+        public bool Delete()
+        {
+            string procName = "dbo.DeleteStudent";
+            var parameters = new Dictionary<string, string>
+            {
+                { "@id", ID }
+            };
+            try
+            {
+                DB db = DB.GetInstance();
+                int result = db.ExecStoredProcedure(procName, parameters);
+                if (result == 1)
+                {
+                    ID = null;
+                    return true;
+                }
+                else
+                    return false;
+            }
+            catch (Exception e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Fatal(e.ToString());//запись лога с ошибкой
+                return false;
             }
         }
     }

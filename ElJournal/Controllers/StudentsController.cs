@@ -86,60 +86,34 @@ namespace ElJournal.Controllers
         }
 
         // POST: api/Students
-        public async Task<dynamic> Post([FromBody]Student student)
+        public async Task<HttpResponseMessage> Post([FromBody]Student student)
         {
-            Response response = new Response();//формат ответа
-            string sqlQuery = String.Format("insert into {0}(PersonID,GroupSemesterID)" +
-                " values(@PersonID,@GroupSemesterID)", table1);
-            string sqlQuery2 = "dbo.GetGroupSemester(@SemesterID, @GroupID)";
-            string sqlQuery3 = "select dbo.CheckPersonGroupFaculty(@person,@group)";
-            Dictionary<string, string> parameters = new Dictionary<string, string>();
-            string authorId = Request?.Headers?.Authorization?.Scheme; //id пользователя из заголовка http
+            //идентификация пользователя
+            string token = Request?.Headers?.Authorization?.Scheme;
+            NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
+            if (authProvider == null)
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
 
-            try
+            Group group = await Group.GetInstanceAsync(student.GroupId);
+            if(group == null)
+                return Request.CreateResponse(HttpStatusCode.BadRequest);
+
+            //проверка наличия прав доступа
+            bool commonRight = default(bool),
+                facultyRight = default(bool);
+            Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.STUDENT_COMMON_PERMISSION),
+                () => facultyRight = authProvider.CheckPermission(Permission.STUDENT_PERMISSION) ?
+                                     authProvider.Faculties.Contains(group?.FacultyId) : false);
+
+            if(commonRight || facultyRight)
             {
-                DB db = DB.GetInstance();
-                parameters.Add("@person", authorId);
-                parameters.Add("@group", student.GroupId);
-
-                //проверка наличия необходимых разрешений
-                bool facultyRight = default(bool), commonRight = default(bool);
-                Parallel.Invoke(
-                    async () => facultyRight = await db.CheckPermission(authorId, Permission.STUDENT_PERMISSION) ?
-                    (bool)await db.ExecuteScalarQueryAsync(sqlQuery3, parameters) : false,
-                    async () => commonRight = await db.CheckPermission(authorId, Permission.STUDENT_COMMON_PERMISSION));
-                
-                if (commonRight || facultyRight)
-                {
-                    //определение id записи ГруппаСеместр (GroupSemesters)
-                    parameters.Clear();
-                    parameters.Add("@SemesterID", student.SemesterId);
-                    parameters.Add("@GroupID", student.GroupId);
-                    string groupsSemester = await db.ExecuteScalarQueryAsync(sqlQuery2, parameters);
-
-                    //добавление связи между человеком и группой
-                    parameters.Clear();
-                    parameters.Add("@PersonID", student.PersonId ?? String.Empty);
-                    parameters.Add("@GroupSemesterID", groupsSemester ?? String.Empty);
-                    int res = await db.ExecInsOrDelQueryAsync(sqlQuery, parameters);
-                    if (res == 1)
-                    {
-                        response.Succesful = true;
-                        response.message = "Student was added";
-                    }
-                    else
-                        response.message = "Student wasn't added";
-                }
+                if(await student.Push())
+                    return Request.CreateResponse(HttpStatusCode.Created);
                 else
-                    response.Error = ErrorMessage.PERMISSION_ERROR;
+                    return Request.CreateResponse(HttpStatusCode.BadRequest);
             }
-            catch(Exception e)
-            {
-                response.Error = e.ToString();
-                response.message = e.Message;
-            }
-
-            return response;
+            else
+                return Request.CreateResponse(HttpStatusCode.Forbidden);
         }
 
 
@@ -181,50 +155,36 @@ namespace ElJournal.Controllers
 
 
         // DELETE: api/Students/5
-        public async Task<dynamic> Delete(string id)
+        public async Task<HttpResponseMessage> Delete(string id)
         {
-            Response response = new Response();//формат ответа
-            string sqlQuery = String.Format("delete from {0} where ID=@id",table1);
-            string sqlQuery2 = "select dbo.CheckPersonStudentFaculty(@person,@student)";
-            Dictionary<string, string> parameters = new Dictionary<string, string>();
-            string authorId = Request?.Headers?.Authorization?.Scheme; //id пользователя из заголовка http
+            //идентификация пользователя
+            string token = Request?.Headers?.Authorization?.Scheme;
+            NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
+            if (authProvider == null)
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
 
-            try
+            Student student = await Student.GetInstanceAsync(id);
+            if(student == null)
+                return Request.CreateResponse(HttpStatusCode.BadRequest);
+
+            Group group = await Group.GetInstanceAsync(student.GroupId);
+
+            //проверка наличия прав доступа
+            bool commonRight = default(bool),
+                facultyRight = default(bool);
+            Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.STUDENT_COMMON_PERMISSION),
+                () => facultyRight = authProvider.CheckPermission(Permission.STUDENT_PERMISSION) ?
+                                     authProvider.Faculties.Contains(group?.FacultyId) : false);
+
+            if (commonRight || facultyRight)
             {
-                DB db = DB.GetInstance();
-                parameters.Add("@person", authorId);
-                parameters.Add("@student", id);
-
-                //проверка наличия необходимых разрешений
-                bool facultyRight = await db.CheckPermission(authorId, Permission.STUDENT_PERMISSION) ?
-                    (bool)await db.ExecuteScalarQueryAsync(sqlQuery2, parameters) : false;
-                bool commonRight = await db.CheckPermission(authorId, Permission.STUDENT_COMMON_PERMISSION);
-
-                if (commonRight || facultyRight)
-                {
-                    //удаление отношения
-                    parameters.Clear();
-                    parameters.Add("@id", id ?? String.Empty);
-                    int res = db.ExecInsOrDelQuery(sqlQuery, parameters);
-                    if (res == 1)
-                    {
-                        response.Succesful = true;
-                        response.message = "Student was deleted";
-                    }
-                    else
-                        response.message = "Student wasn't deleted";
-                }
+                if (student.Delete())
+                    return Request.CreateResponse(HttpStatusCode.OK);
                 else
-                    response.Error = ErrorMessage.PERMISSION_ERROR;
+                    return Request.CreateResponse(HttpStatusCode.Conflict);
             }
-            catch (Exception e)
-            {
-                response.Error = e.ToString();
-                response.message = e.Message;
-                //TODO: add log
-            }
-
-            return response;
+            else
+                return Request.CreateResponse(HttpStatusCode.Forbidden);
         }
 
 
