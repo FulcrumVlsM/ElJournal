@@ -23,9 +23,6 @@ namespace ElJournal.Controllers
         // добавить студента на поток по предмету (администратор кафедры, администратор)
         // удалить студента из потока по предмету (администратор, администратор кафедры)
 
-        private static string table1 = "StudentsGroupsSemesters";
-        private static string table2 = "People";
-        private static string table3 = "Groups";
 
         // GET: api/Students/user/5
         // получить id студента для всех семестров по указанному пользователю (все)

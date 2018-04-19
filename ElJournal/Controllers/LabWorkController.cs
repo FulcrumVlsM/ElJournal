@@ -23,17 +23,20 @@ namespace ElJournal.Controllers
         // получить весь список лабораторных (администратор, администратор кафедры, администратор факультета)
         // получить конкретную лабораторную по id (все)
         // получить файл, прикрепленный к лаб работе (все рег. пользователи)
-        // получить список лабораторных по определенному предмету (все)
         // получить список моих лабораторных работ (все рег. пользователи)
-        // получить список выполненных студентом лаб работ по предмету (все рег. пользователи)
         // добавить лабораторную работу (преподаватель, администратор)
         // добавить файл к лабораторной работе (автор, администратор)
-        // добавить лабораторную работу в план (автор, администратор)
-        // установить лаб работу из плана как выполненную студентом (преподаватель)
-        // измененить лабораторной работы (автор, администратор)
-        // удалить лаб работу из плана (преподаватель, администратор)
+        // изменить лабораторную работу (автор, администратор)
         // удалить лабораторную работу (администратор)
         // удалить файл из лабораторной работы (автор, администратор)
+
+        // получить план лабораторных по определенному предмету (все)
+        // добавить лабораторную работу в план (автор, администратор)
+        // удалить лаб работу из плана (преподаватель, администратор)
+
+        // получить список выполненных студентом лаб работ по предмету (все рег. пользователи)
+        // установить лаб работу из плана как выполненную студентом (преподаватель, администратор)
+        // удалить факт выполнения лабораторной работы (преподаватель, администратор)
 
         string fileURL = ConfigurationManager.AppSettings["FileStorage"];
 
@@ -113,25 +116,22 @@ namespace ElJournal.Controllers
 
 
         // GET: api/LabWork/plan/5
-        // получить список лабораторных по определенному предмету (все)
+        // получить план лабораторных по определенному предмету (все)
         [HttpGet]
-        [Route("api/LabWork/plan/{subjectId}")]
-        public async Task<HttpResponseMessage> GetPlan(string subjectId)
+        [Route("api/LabWork/plan/{flowSubjectId}")]
+        public async Task<HttpResponseMessage> GetPlan(string flowSubjectId)
         {
             Response response = new Response();
-            var parameters = new Dictionary<string, string>();
-
-            //вызов функции, изымающей список лабораторных согласно плану по предмету @subjectId
-            string sqlQuery = "select * from dbo.PlannedLabWorks(@subjectId)";
 
             try
             {
-                DB db = DB.GetInstance();
-
-                parameters.Add("@subjectId", subjectId);
-                var planned = await db.ExecSelectQueryAsync(sqlQuery, parameters);//получение данных из БД
-                response.Data = LabWork.ToLabWork(planned); // преобразование в модель
-                return Request.CreateResponse(HttpStatusCode.OK, response);
+                var list = await LabWorkPlan.GetCollectionAsync();
+                list = list.FindAll(x => x.FlowSubjectId == flowSubjectId);
+                response.Data = list;
+                if(list.Count>0)
+                    return Request.CreateResponse(HttpStatusCode.OK, response);
+                else
+                    return Request.CreateResponse(HttpStatusCode.NoContent, response);
             }
             catch(Exception e)
             {
@@ -145,37 +145,32 @@ namespace ElJournal.Controllers
         // GET: api/LabWork/exec/5/5
         // получить список выполненных студентом лаб работ по предмету (все рег. пользователи)
         [HttpGet]
-        [Route("api/LabWork/exec/{studentId}/{subjectId}")]
-        public async Task<IHttpActionResult> GetExec(string studentId, string subjectId)
+        [Route("api/LabWork/exec/{studentFlowId}/{subjectFlowId}")]
+        public async Task<HttpResponseMessage> GetExec(string studentFlowId, string subjectFlowId)
         {
             Response response = new Response();
             string token = Request?.Headers?.Authorization?.Scheme; //токен пользователя
             NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
-            var parameters = new Dictionary<string, string>();
+            if (authProvider == null)
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
 
-            string sqlQuery = "select * from dbo.ExecutedLabWorks(@studentId,@subjectId)";
+            //поиск предмета
+            FlowSubject fSubject = await FlowSubject.GetInstanceAsync(subjectFlowId);
+            if(fSubject == null)
+                return Request.CreateResponse(HttpStatusCode.BadRequest);
 
-            if (authProvider != null)
+            var exLabs = await ExecutedLabWork.GetCollectionAsync();
+            exLabs = exLabs.FindAll(x =>
             {
-                try
-                {
-                    DB db = DB.GetInstance();
+                LabWorkPlan plan = (LabWorkPlan.GetInstanceAsync(x.PlanId)).Result;
+                return (plan.FlowSubjectId == subjectFlowId) && (x.StudentFlowSubjectId == studentFlowId);
+            });
 
-                    parameters.Add("@studentId", studentId);
-                    parameters.Add("@subjectId", subjectId);
-                    var exec = await db.ExecSelectQueryAsync(sqlQuery, parameters);//поулчение данных из БД
-                    response.Data = ExecutedLabWork.ToLabWork(exec); // преобразование данных в модель
-                    return Ok(response);
-                }
-                catch (Exception e)
-                {
-                    Logger logger = LogManager.GetCurrentClassLogger();
-                    logger.Fatal(e.ToString()); //запись лога с ошибкой
-                    return InternalServerError();
-                }
-            }
+            response.Data = exLabs;
+            if(exLabs.Count>0)
+                return Request.CreateResponse(HttpStatusCode.OK, response);
             else
-                return Unauthorized(null);
+                return Request.CreateResponse(HttpStatusCode.NoContent, response);
         }
 
 
@@ -250,152 +245,82 @@ namespace ElJournal.Controllers
         // POST: api/LabWork/plan/5/5
         // добавить лабораторную работу в план (автор, администратор)
         [HttpPost]
-        [Route("api/LabWork/plan/{subjectGroupId}/{workId}")]
-        public async Task<IHttpActionResult> PostPlan(string subjectGroupId, string workId)
+        [Route("api/LabWork/plan/{subjectFlowId}/{workId}")]
+        public async Task<HttpResponseMessage> PostPlan(string subjectFlowId, string workId)
         {
-            Response response = new Response();
-            string token = Request?.Headers?.Authorization?.Scheme; //токен пользователя
-            NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
-
-            var parameters = new Dictionary<string, string>();
-            string sqlQuery = "insert into LabWorksPlan(SubjectGroupSemesterID,LabWorkID) " +
-                "values (@subjectId,@workId)";
-
-            try
-            {
-                if (authProvider != null)
-                {
-                    DB db = DB.GetInstance();
-
-                    parameters.Add("@subjectId", subjectGroupId);
-                    parameters.Add("@workId", workId);
-
-                    //Получение прав пользователя
-                    bool commonRight = default(bool);
-                    bool subjectRight = default(bool);
-                    Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.LBWRK_COMMON_PERMISSION),
-                        () => subjectRight = authProvider.CheckPermission(Permission.LBWRK_PERMISSION) ?
-                        authProvider.FlowsSubjects.Contains(subjectGroupId) : false);
-
-                    if (commonRight || subjectRight)
-                    {
-                        int result = await db.ExecInsOrDelQueryAsync(sqlQuery, parameters);//отправка запроса в бд
-                        if (result == 1)
-                            return Created<Response>(string.Format("api/LabWork/{0}", workId), null);
-                        else
-                        {
-                            Logger logger = LogManager.GetCurrentClassLogger();
-                            logger.Warn(string.Format("Запрос на добавление лаб. работы в план не прошел успешно. Result={0}", result)); //запись лога с ошибкой
-                            return InternalServerError();
-                        }
-                    }
-                    else
-                        throw new HttpResponseException(HttpStatusCode.Forbidden);
-                }
-                else
-                    return Unauthorized(null);
-            }
-            catch(Exception e)
-            {
-                Logger logger = LogManager.GetCurrentClassLogger();
-                logger.Fatal(e.ToString()); //запись лога с ошибкой
-                return InternalServerError();
-            }
-        }
-
-
-
-        // POST: api/LabWork/exec/5/5?state=true
-        // отметка о выполнении лаб. работы (параметр state) (преподаватель, администратор)
-        [HttpPost]
-        [Route("api/LabWork/exec/{studentId}/{workId}/{subjectGroupId}")]
-        public async Task<IHttpActionResult> PostExec(string studentId, string workId, string subjectGroupId,
-            [FromUri]bool state=true)
-        {
-            Response response = new Response();
-            Logger logger = LogManager.GetCurrentClassLogger();
-
             //идентификация пользователя
             string token = Request?.Headers?.Authorization?.Scheme; //токен пользователя
             NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
+            if(authProvider == null)
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
 
-            //проверка относится ли запись из LabWorkPlan к группе указанного студента
-            string sqlQuery1 = "select * from dbo.CheckStudentLabWorkPlan(@studentId,@workID,@subjectGroupSemesterID)";
-            // добавление факта выполнения работы
-            string sqlQuery2 = "insert into LabWorksExecution(LabWorkPlanID,StudentGroupSemesterID)" +
-                " values(@planId,@studentId)";
-            //удаление факта выполнения работы
-            string sqlQuery3 = "delete from LabWorksExecution where LabWorkPlanID=@planId " +
-                "and StudentGroupSemesterID=@studentId";
+            //поиск предмета
+            FlowSubject fSubject = await FlowSubject.GetInstanceAsync(subjectFlowId);
+            if (fSubject == null)
+                return Request.CreateResponse(HttpStatusCode.BadRequest);
 
-            var parameters = new Dictionary<string, string>
+            //поиск лабораторной работы
+            LabWork lab = await LabWork.GetInstanceAsync(workId);
+            if (lab == null)
+                return Request.CreateResponse(HttpStatusCode.BadRequest);
+
+            //Получение прав пользователя
+            bool commonRight = default(bool);
+            bool subjectRight = default(bool);
+            Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.LBWRK_COMMON_PERMISSION),
+                () => subjectRight = authProvider.CheckPermission(Permission.LBWRK_PERMISSION) ?
+                authProvider.FlowsSubjects.Contains(subjectFlowId) : false);
+
+            if (commonRight || subjectRight)
             {
-                { "@studentId", studentId },
-                { "@workID", workId },
-                { "@subjectGroupSemesterID", subjectGroupId },
-                { "@planId", await LabWorkPlan.GetPlanIdAsync(subjectGroupId, workId) },
-                { "@token", token }
-            };
-
-            try
-            {
-                DB db = DB.GetInstance();
-                string subjectId = await getSubjectAsync(workId);
-                bool commonRight = default(bool), //право LBWRK_COMMON_PERMISSION
-                    teacherRight = default(bool), // право LBWRK_PERMISSION, и если пользователь - преподаватель предмета
-                    trueData = default(bool); // корректность данных
-
-                //Получение прав пользователя и проверка корректности входных данных
-                Parallel.Invoke(
-                    () => commonRight = authProvider.CheckPermission(Permission.LBWRK_COMMON_PERMISSION),
-                    async () => trueData = await db.ExecuteScalarQueryAsync(sqlQuery1, parameters),
-                    () =>
-                    {
-                        teacherRight = authProvider.CheckPermission(Permission.LBWRK_PERMISSION) ?
-                             authProvider.FlowsSubjects.Contains(subjectId) : false;
-                    });
-
-
-                if(trueData && (commonRight || teacherRight))
+                LabWorkPlan plan = new LabWorkPlan
                 {
-                    if (state) //отмечается выполненная работа
-                    {
-                        int result = await db.ExecInsOrDelQueryAsync(sqlQuery2, parameters);
-                        if (result == 1)
-                            return Created(string.Format("api/LabWork/exec/{0}/{1}",studentId,subjectId), response);
-                        else
-                        {
-                            logger.Warn(string.Format("Запрос на отметку лаб. работы не прошел успешно. Result={0}", result)); //запись лога с ошибкой
-                            return InternalServerError();
-                        }
-                    }
-                    else //снятие отметки о выполнении
-                    {
-                        int result = await db.ExecInsOrDelQueryAsync(sqlQuery3, parameters);
-                        if (result == 1)
-                            return Created(string.Format("api/LabWork/exec/{0}/{1}", studentId, subjectId), response);
-                        else
-                        {
-                            logger.Warn(string.Format("Запрос на отмену отметки лаб. работы не прошел успешно. Result={0}",result)); //запись лога с ошибкой
-                            return InternalServerError();
-                        }
-                    }
-                }
+                    FlowSubjectId = subjectFlowId,
+                    labWork = lab
+                };
+                if (await plan.Push())
+                    return Request.CreateResponse(HttpStatusCode.Created);
                 else
-                {
-                    if (!trueData)
-                        return BadRequest();
-                    else
-                        throw new HttpResponseException(HttpStatusCode.Forbidden);
-                }
+                    return Request.CreateResponse(HttpStatusCode.Conflict);
             }
-            catch(Exception e)
-            {
-                logger.Fatal(e.ToString()); //запись лога с ошибкой
-                return InternalServerError();
-            }
+            else
+                return Request.CreateResponse(HttpStatusCode.Forbidden);
         }
 
+
+        // POST: api/LabWork/exec/5/5?state=true
+        // установить лаб работу из плана как выполненную студентом (преподаватель, администратор)
+        [HttpPost]
+        [Route("api/LabWork/exec/{studentId}/{workId}/{subjectGroupId}")]
+        public async Task<HttpResponseMessage> PostExec([FromBody]ExecutedLabWork exLab)
+        {
+            //идентификация пользователя
+            string token = Request?.Headers?.Authorization?.Scheme; //токен пользователя
+            NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
+            if (authProvider == null)
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
+
+            LabWorkPlan plan = await LabWorkPlan.GetInstanceAsync(exLab.PlanId);
+            if(plan == null)
+                return Request.CreateResponse(HttpStatusCode.BadRequest);
+
+            //Получение прав пользователя
+            bool commonRight = default(bool);
+            bool subjectRight = default(bool);
+            Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.LBWRK_COMMON_PERMISSION),
+                () => subjectRight = authProvider.CheckPermission(Permission.LBWRK_PERMISSION) ?
+                authProvider.FlowsSubjects.Contains(plan.FlowSubjectId) : false);
+
+            if (commonRight || subjectRight)
+            {
+                if (await exLab.Push())
+                    return Request.CreateResponse(HttpStatusCode.Created);
+                else
+                    return Request.CreateResponse(HttpStatusCode.Conflict);
+            }
+            else
+                return Request.CreateResponse(HttpStatusCode.Forbidden);
+        }
 
 
         // POST: api/LabWork
@@ -544,89 +469,103 @@ namespace ElJournal.Controllers
         // DELETE: api/LabWork/plan/5
         // удалить лаб работу из плана (преподаватель, администратор)
         [HttpDelete]
-        [Route("api/LabWork/plan/{subjectGroupId}/{workId}")]
-        public async Task<IHttpActionResult> DeletePlan(string subjectGroupId, string workId)
+        [Route("api/LabWork/plan/{id}")]
+        public async Task<HttpResponseMessage> DeletePlan(string id)
         {
             //идентификация пользователя
-            Response response = new Response();
-            string token = Request?.Headers?.Authorization?.Scheme;
+            string token = Request?.Headers?.Authorization?.Scheme; //токен пользователя
             NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
+            if (authProvider == null)
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
 
-            var parameters = new Dictionary<string, string>();
-            string sqlQuery = "delete from LabWorksPlan where SubjectGroupSemesterID=@subjectGroupId and" +
-                " LabWorkID=@workId";
+            //поиск лабораторной работы из плана
+            LabWorkPlan plan = await LabWorkPlan.GetInstanceAsync(id);
+            if(plan == null)
+                return Request.CreateResponse(HttpStatusCode.BadRequest);
 
-            parameters.Add("@subjectGroupId", subjectGroupId);
-            parameters.Add("@workId", workId);
-            parameters.Add("@token", token);
+            //Получение прав пользователя
+            bool commonRight = default(bool);
+            bool subjectRight = default(bool);
+            Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.LBWRK_COMMON_PERMISSION),
+                () => subjectRight = authProvider.CheckPermission(Permission.LBWRK_PERMISSION) ?
+                authProvider.FlowsSubjects.Contains(plan?.FlowSubjectId) : false);
 
-            try
+            if (commonRight || subjectRight)
             {
-                DB db = DB.GetInstance();
-
-                //проверка наличия прав пользователя
-                bool commonRight = default(bool), teacherRight = default(bool);
-                Parallel.Invoke(
-                    () => commonRight = authProvider.CheckPermission(Permission.LBWRK_COMMON_PERMISSION),
-                    () => teacherRight = authProvider.CheckPermission(Permission.LBWRK_PERMISSION) ?
-                             authProvider.FlowsSubjects.Contains(subjectGroupId) : false);
-
-                if (commonRight || teacherRight) //если необходимые разрешения имеются
-                {
-                    int result = db.ExecInsOrDelQuery(sqlQuery, parameters); //выполнение запроса в бд
-                    if (result == 1)
-                        return Ok(); //1 будет возвращено при удалении 1 записи (0 - при отсутствии удаленных записей)
-                    else
-                    {
-                        Logger logger = LogManager.GetCurrentClassLogger();
-                        logger.Warn(string.Format("При удалении из плана предмета \"{0}\" лаб. работы \"{1}\" произошла" +
-                            " ошибка. Result={2}", subjectGroupId, workId, result)); //запись лога с ошибкой
-                        return BadRequest();
-                    }
-                }
+                if (plan.Delete())
+                    return Request.CreateResponse(HttpStatusCode.OK);
                 else
-                    throw new HttpResponseException(HttpStatusCode.Forbidden);
+                    return Request.CreateResponse(HttpStatusCode.Conflict);
             }
-            catch (Exception e)
+            else
+                return Request.CreateResponse(HttpStatusCode.Forbidden);
+        }
+
+
+        // удалить факт выполнения лабораторной работы (преподаватель, администратор)
+        [HttpDelete]
+        [Route("api/LabWork/exec/{id}")]
+        public async Task<HttpResponseMessage> DeleteExec(string id)
+        {
+            //идентификация пользователя
+            string token = Request?.Headers?.Authorization?.Scheme; //токен пользователя
+            NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
+            if (authProvider == null)
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
+
+            //поиск выполненной лабораторной работы
+            ExecutedLabWork exLab = await ExecutedLabWork.GetInstanceAsync(id);
+            if(exLab == null)
+                return Request.CreateResponse(HttpStatusCode.BadRequest);
+
+            //поиск лабораторной работы из плана
+            LabWorkPlan plan = await LabWorkPlan.GetInstanceAsync(exLab.PlanId);
+
+            //Получение прав пользователя
+            bool commonRight = default(bool);
+            bool subjectRight = default(bool);
+            Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.LBWRK_COMMON_PERMISSION),
+                () => subjectRight = authProvider.CheckPermission(Permission.LBWRK_PERMISSION) ?
+                authProvider.FlowsSubjects.Contains(plan?.FlowSubjectId) : false);
+
+            if (commonRight || subjectRight)
             {
-                Logger logger = LogManager.GetCurrentClassLogger();
-                logger.Fatal(e.ToString()); //запись лога с ошибкой
-                return InternalServerError();
+                if (exLab.Delete())
+                    return Request.CreateResponse(HttpStatusCode.OK);
+                else
+                    return Request.CreateResponse(HttpStatusCode.Conflict);
             }
+            else
+                return Request.CreateResponse(HttpStatusCode.Forbidden);
         }
 
 
         // DELETE: api/LabWork/5
         // удалить лабораторную работу (администратор)
-        public async Task<dynamic> Delete(string id)
+        [HttpDelete]
+        [Route("api/LabWork/{id}")]
+        public async Task<HttpResponseMessage> Delete(string id)
         {
             //идентификация пользователя
             string token = Request?.Headers?.Authorization?.Scheme;
             NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
-            LabWork lab = new LabWork { ID = id };
+            if(authProvider == null)
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
 
-            try
+            //поиск лабораторной работы
+            LabWork lab = await LabWork.GetInstanceAsync(id);
+            if(lab==null)
+                return Request.CreateResponse(HttpStatusCode.BadRequest);
+
+            if (authProvider.CheckPermission(Permission.LBWRK_COMMON_PERMISSION))//проверка прав на операцию
             {
-                if (authProvider.CheckPermission(Permission.LBWRK_COMMON_PERMISSION))//проверка прав на операцию
-                {
-                    if (lab.Delete()) //удаление
-                        return Ok();
-                    else
-                    {
-                        Logger logger = LogManager.GetCurrentClassLogger();
-                        logger.Warn(string.Format("При удалении лаб. работы \"{0}\" произошла ошибка.", id)); //запись лога с ошибкой
-                        return BadRequest();
-                    }
-                }
+                if (lab.Delete()) //удаление
+                    return Request.CreateResponse(HttpStatusCode.OK);
                 else
-                    throw new HttpResponseException(HttpStatusCode.Forbidden);
+                    return Request.CreateResponse(HttpStatusCode.Conflict);
             }
-            catch (Exception e)
-            {
-                Logger logger = LogManager.GetCurrentClassLogger();
-                logger.Fatal(e.ToString()); //запись лога с ошибкой
-                return InternalServerError();
-            }
+            else
+                throw new HttpResponseException(HttpStatusCode.Forbidden);
         }
 
 
