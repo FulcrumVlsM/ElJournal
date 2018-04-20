@@ -59,18 +59,7 @@ namespace ElJournal.Models
             string sqlQuery = "select * from Flows";
             DB db = DB.GetInstance();
             var result = await db.ExecSelectQueryAsync(sqlQuery);
-            var flows = new List<Flow>(result.Count);
-            foreach (var obj in result)
-            {
-                flows.Add(new Flow
-                {
-                    ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : null,
-                    Name = obj.ContainsKey("name") ? obj["name"].ToString() : null,
-                    FacultyId = obj.ContainsKey("FacultyID") ? obj["FacultyID"].ToString() : null,
-                    AltName = obj.ContainsKey("altName") ? obj["altName"].ToString() : null
-                });
-            }
-
+            var flows = ToFlows(result);
             return flows;
         }
 

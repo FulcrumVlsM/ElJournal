@@ -15,6 +15,7 @@ namespace ElJournal.Models
         public string Description { get; set; }
         public string CuratorId { get; set; }
         public string FacultyId { get; set; }
+        public List<Semester> Semesters { get; set; }
 
         /// <summary>
         /// Возвращает группу по id

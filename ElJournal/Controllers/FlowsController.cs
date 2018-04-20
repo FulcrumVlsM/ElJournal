@@ -70,6 +70,8 @@ namespace ElJournal.Controllers
         }
 
         // PUT: api/Flows/5
+        [HttpPut]
+        [Route("api/Flows/{id}")]
         public async Task<HttpResponseMessage> Put(string id, [FromBody]Flow flow)
         {
             //идентификация пользователя
@@ -101,6 +103,8 @@ namespace ElJournal.Controllers
         }
 
         // DELETE: api/Flows/5
+        [HttpDelete]
+        [Route("api/Flows/{id}")]
         public async Task<HttpResponseMessage> Delete(string id)
         {
             //идентификация пользователя

@@ -43,7 +43,7 @@ namespace ElJournal.Controllers
 
         // GET: api/LabWork
         // получить весь список лабораторных (администратор)
-        public async Task<IHttpActionResult> Get([FromUri]string name)
+        public async Task<IHttpActionResult> Get([FromUri]string name = null)
         {
             Response response = new Response();
             string token = Request?.Headers?.Authorization?.Scheme; //token пользователя
