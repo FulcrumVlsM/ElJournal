@@ -33,15 +33,19 @@ namespace ElJournal.Models
             var obj = await db.ExecSelectQuerySingleAsync(sqlQuery, parameters);
 
             if (obj != null)
+            {
                 return new Semester
                 {
                     ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : null,
                     Name = obj.ContainsKey("name") ? obj["name"].ToString() : null,
-                    StartDate = obj.ContainsKey("StartDate") ? obj["StartDate"] : null,
-                    EndDate = obj.ContainsKey("EndDate") ? obj["EndDate"] : null,
-                    SessionStart = obj.ContainsKey("SessionStartDate") ? obj["SessionStartDate"] : null,
-                    SessionEnd = obj.ContainsKey("SessionEndDate") ? obj["SessionEndDate"] : null
+                    StartDate = obj.ContainsKey("StartDate") ? (!(obj["StartDate"] is DBNull) ? obj["StartDate"] : null) : null,
+                    EndDate = obj.ContainsKey("EndDate") ? (!(obj["EndDate"] is DBNull) ? obj["EndDate"] : null) : null,
+                    SessionStart = obj.ContainsKey("SessionStartDate") ? 
+                                                 (!(obj["SessionStartDate"] is DBNull) ? obj["SessionStartDate"] : null) : null,
+                    SessionEnd = obj.ContainsKey("SessionEndDate") ? 
+                                                      (!(obj["SessionEndDate"] is DBNull) ? obj["SessionEndDate"] : null) : null
                 };
+            }
             else
                 return null;
         }
@@ -64,10 +68,12 @@ namespace ElJournal.Models
                     {
                         ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : null,
                         Name = obj.ContainsKey("name") ? obj["name"].ToString() : null,
-                        StartDate = obj.ContainsKey("StartDate") ? obj["StartDate"] : null,
-                        EndDate = obj.ContainsKey("EndDate") ? obj["EndDate"] : null,
-                        SessionStart = obj.ContainsKey("SessionStartDate") ? obj["SessionStartDate"] : null,
-                        SessionEnd = obj.ContainsKey("SessionEndDate") ? obj["SessionEndDate"] : null
+                        StartDate = obj.ContainsKey("StartDate") ? (!(obj["StartDate"] is DBNull) ? obj["StartDate"] : null) : null,
+                        EndDate = obj.ContainsKey("EndDate") ? (!(obj["EndDate"] is DBNull) ? obj["EndDate"] : null) : null,
+                        SessionStart = obj.ContainsKey("SessionStartDate") ?
+                                                 (!(obj["SessionStartDate"] is DBNull) ? obj["SessionStartDate"] : null) : null,
+                        SessionEnd = obj.ContainsKey("SessionEndDate") ?
+                                                      (!(obj["SessionEndDate"] is DBNull) ? obj["SessionEndDate"] : null) : null
                     });
                 }
                 return semesters;
