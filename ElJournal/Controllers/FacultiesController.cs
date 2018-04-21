@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using ElJournal.Models;
 using System.Data.SqlClient;
+using ElJournal.Providers;
 
 namespace ElJournal.Controllers
 {
@@ -21,163 +22,102 @@ namespace ElJournal.Controllers
         private const string FACULTY_PERMISSION = "FACULTY_PERMISSION"; //разрешение на связанный
 
         // GET: api/Faculties
-        public async Task<dynamic> Get()
+        // возвращает полный список факультетов (все)
+        public async Task<HttpResponseMessage> Get()
         {
             Response response = new Response();//формат ответа
-            await Task.Run(() =>
-            {
-                try
-                {
-                    DB db = DB.GetInstance();
-                    response.Data = db.Faculties;//запроск БД
-                    response.Succesful = true;
-                }
-                catch (Exception e)
-                {
-                    response.Error = e.ToString();
-                    response.message = e.Message;
-                    //TODO: add log
-                }
-            });
-            return response;
+            response.Data = await Faculty.GetCollectionAsync();
+            if (response.Data.Count > 0)
+                return Request.CreateResponse(HttpStatusCode.OK, response);
+            else
+                return Request.CreateResponse(HttpStatusCode.NoContent, response);
         }
 
         // GET: api/Faculties/guid
         public async Task<dynamic> Get(string id)
         {
             Response response = new Response();//формат ответа
-            await Task.Run(() =>
-            {
-                try
-                {
-                    DB db = DB.GetInstance();
-                    response.Data = db.Faculties.Where(x => x["ID"].Equals(id));
-                    response.Succesful = true;
-                }
-                catch (Exception e)
-                {
-                    response.Error = e.ToString();
-                    response.message = e.Message;
-                    //TODO: add log
-                }
-            });
-            return response;
+            var faculty = await Faculty.GetInstanceAsync(id);
+            response.Data = faculty;
+            if(faculty != null)
+                return Request.CreateResponse(HttpStatusCode.OK, response);
+            else
+                return Request.CreateResponse(HttpStatusCode.NotFound);
         }
         
 
         // POST: api/Faculties
         //TODO: запись в БД идет, но возвращается false
         public async Task<dynamic> Post([FromBody]Faculty faculty)
-        {   
-            Response response = new Response(); //формат ответа
-            var parameters = new Dictionary<string, string>();
-            string sqlAddQuery = "dbo.AddFaculty";
-            string sqlSQuery = "select top 1 ID from Faculties where name=@name";
+        {
+            //идентификация пользователя
+            string token = Request?.Headers?.Authorization?.Scheme; //токен пользователя
+            NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
+            if (authProvider == null)
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
 
-            try
+            //Получение прав пользователя
+            bool commonRight = authProvider.CheckPermission(Permission.FACULTY_COMMON_PERMISSION);
+
+            if (commonRight)
             {
-                DB db = DB.GetInstance();
-                bool right = await db.CheckPermission(faculty.authorId, FACULTY_COMMON_PERMISSION);
-                
-                if (right) //если у пользователя есть права на операцию
-                {
-                    parameters.Add("@dekanID", faculty.dekanId); //добавление параметров к запросу
-                    parameters.Add("@name", faculty.name);
-                    parameters.Add("@description", faculty.description);
-
-                    int res = db.ExecStoredProcedure(sqlAddQuery, parameters); //выполнение запроса
-                    if (res != 0)
-                    {
-                        response.Succesful = true;
-                        response.message = "New faculty was added";
-                        response.Data = new { ID = db.ExecuteScalarQueryAsync(sqlSQuery,parameters) };
-                    }
-                    else
-                        response.message = "Faculty not added";
-                }
+                if(await faculty.Push())
+                    return Request.CreateResponse(HttpStatusCode.Created);
                 else
-                    response.Error = ErrorMessage.PERMISSION_ERROR;
+                    return Request.CreateResponse(HttpStatusCode.Conflict);
             }
-            catch(Exception e)
-            {
-                response.Error = e.ToString();
-                response.message = e.Message;
-                //TODO: add log
-            }
+            else
+                return Request.CreateResponse(HttpStatusCode.Forbidden);
 
-            return response;
         }
 
         // PUT: api/Faculties/guid
         public async Task<dynamic> Put(string id, [FromBody]Faculty faculty)
         {
-            Response response = new Response(); //формат результата запроса
-            var parameters = new Dictionary<string, string>();
-            string sqlQuery = "dbo.UpdateFaculty";
+            //идентификация пользователя
+            string token = Request?.Headers?.Authorization?.Scheme; //токен пользователя
+            NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
+            if (authProvider == null)
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
 
-            try
+            //Получение прав пользователя
+            bool commonRight = authProvider.CheckPermission(Permission.FACULTY_COMMON_PERMISSION);
+
+            if (commonRight)
             {
-                DB db = DB.GetInstance();
-                bool right = await db.CheckPermission(faculty.authorId, FACULTY_COMMON_PERMISSION);
-                if (right)
-                {
-                    parameters.Add("@ID", id);              //добавление параметров к запросу
-                    parameters.Add("@dekanID", faculty.dekanId);
-                    parameters.Add("@name", faculty.name);
-                    parameters.Add("@description", faculty.description);
-                    int res = db.ExecStoredProcedure(sqlQuery, parameters);//выполнение запроса
-                    if (res == 0)
-                        response.Succesful = true;
-                    else
-                        response.message = "Operation was false";
-                }
+                faculty.ID = id;
+                if(await faculty.Update())
+                    return Request.CreateResponse(HttpStatusCode.OK);
                 else
-                    response.Error = ErrorMessage.PERMISSION_ERROR;
+                    return Request.CreateResponse(HttpStatusCode.BadRequest);
             }
-            catch(Exception e)
-            {
-                response.Error = e.ToString();
-                response.message = e.Message;
-                //TODO: add log
-            }
-
-            return response;
+            else
+                return Request.CreateResponse(HttpStatusCode.Forbidden);
         }
 
         // DELETE: api/Faculties/guid
-        public async Task<dynamic> Delete(string id, [FromBody]Faculty faculty)
+        public async Task<dynamic> Delete(string id)
         {
-            Response response = new Response(); //формат ответа
-            var parameters = new Dictionary<string, string>();
-            string sqlDelQuery = "delete from Faculties where ID=@ID";
+            //идентификация пользователя
+            string token = Request?.Headers?.Authorization?.Scheme; //токен пользователя
+            NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
+            if (authProvider == null)
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
 
-            try
+            //Получение прав пользователя
+            bool commonRight = authProvider.CheckPermission(Permission.FACULTY_COMMON_PERMISSION);
+
+            if (commonRight)
             {
-                DB db = DB.GetInstance();
-                bool right = await db.CheckPermission(faculty.authorId, FACULTY_COMMON_PERMISSION);//проверка наличия прав
-                if (right)
-                {
-                    parameters.Add("@ID", id);
-                    int result = db.ExecInsOrDelQuery(sqlDelQuery, parameters);
-                    if (result == 1)
-                    {
-                        response.Succesful = true;
-                        response.message = String.Format("Faculty was deleted");
-                    }
-                    else
-                        response.message = "Operation was failed";
-                }
+                Faculty faculty = await Faculty.GetInstanceAsync(id);
+
+                if (faculty?.Delete() ?? false)
+                    return Request.CreateResponse(HttpStatusCode.OK);
                 else
-                    response.Error = ErrorMessage.PERMISSION_ERROR;
+                    return Request.CreateResponse(HttpStatusCode.BadRequest);
             }
-            catch(Exception e)
-            {
-                response.Error = e.ToString();
-                response.message = e.Message;
-                //TODO: add log
-            }
-
-            return response;
+            else
+                return Request.CreateResponse(HttpStatusCode.Forbidden);
         }
     }
 }

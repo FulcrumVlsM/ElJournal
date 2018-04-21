@@ -7,142 +7,260 @@ using System.Threading.Tasks;
 using System.Web.Http;
 using ElJournal.Providers;
 using ElJournal.Models;
+using System.Text.RegularExpressions;
+using ElJournal.DBInteract;
 
 namespace ElJournal.Controllers
 {
     public class SubjectsController : ApiController
     {
-        //получить общий список предметов (и по имени) (все)
-        //получить конкретный предмет по id (все)
-        //получить список предметов группы (все)
-        //получить список предметов, которые ведет преподаватель (все рег. пользователи)
-        //получить игнор-список для данного предмета (администратор, администратор кафедры, преподаватель)
-        //добавить новый предмет (администратор, администратор кафедры)
-        //установить предмет для группы в указанном семестре (администратор, администратор кафедры)
-        //установить игнорирование студента для данного предмета (администратор, администратор кафедры, преподаватель)
-        //изменить информацию о предмете (администратор, администратор кафедры)
-        //изменить преподавателя по предмету для группы в указанном семестре (администратор, администратор кафедры)
-        //удалить предмет из плана для группы в указанном семестре (администратор, администратор кафедры)
-        //удалить предмет (администратор)
-        //удалить игнорирование студента для данного предмета (администратор, администратор кафедры, преподаватель)
+        // получить общий список предметов (все)
+        // получить конкретный предмет по id (все)
+        // добавить новый предмет (администратор, администратор кафедры)
+        // изменить информацию о предмете (администратор, администратор кафедры)
+        // удалить предмет (администратор, администратор кафедры)
+
+        // получить общий список поток-предмет-семестр (все)
+        // добавить поток-предмет-семестр (администратор, администратор кафедры)
+        // удалить поток-предмет-семестр (администратор, администратор кафедры)
 
 
         // GET: api/Subjects
-        // возвращает общий список предметов
-        public async Task<dynamic> Get([FromUri]string name = null)
+        //получить общий список предметов (все)
+        public async Task<HttpResponseMessage> Get([FromUri]string name = null, [FromUri]string department = null)
         {
-            return null;
+            Response response = new Response();
+            var subjects = await Subject.GetCollectionAsync();
+            if (!string.IsNullOrEmpty(department))
+                subjects = subjects.FindAll(x => x.DepartmentID == department);
+            if(!string.IsNullOrEmpty(name))
+            {
+                Regex regex = new Regex(name);
+                subjects = subjects.FindAll(x => regex.IsMatch(x.Name));
+            }
+            response.Data = subjects;
+            return Request.CreateResponse(HttpStatusCode.OK, response);
         }
+
 
         // GET: api/Subjects/5
-        // возвращает конкретный предмет
+        //получить конкретный предмет по id (все)
         [HttpGet]
         [Route("api/Subjects/{id}")]
-        public async Task<dynamic> GetConcrete(string id)
+        public async Task<HttpResponseMessage> GetConcrete(string id)
         {
-            return null;
-        }
-
-        // GET: api/Subjects/ByGroup/5
-        // возвращает предметы для указанной группы (группа-семестр)
-        [HttpGet]
-        [Route("api/Subjects/ByGroup/{groupId}")]
-        public async Task<dynamic> GetGroup(string groupId)
-        {
-            return null;
+            Response response = new Response();
+            response.Data = await Subject.GetInstanceAsync(id);
+            if(response.Data != null)
+                return Request.CreateResponse(HttpStatusCode.OK, response);
+            else
+                return Request.CreateResponse(HttpStatusCode.NotFound);
         }
 
 
-        // GET: api/Subjects/ByTeacher/5
-        // возвращает список предметов, которые ведет указанный преподаватель
+        // получить общий список поток-предмет-семестр (все)
         [HttpGet]
-        [Route("api/Subjects/ByTeacher/{personId}")]
-        public async Task<dynamic> GetTeacher(string personId)
+        [Route("api/Subjects/flow")]
+        public async Task<HttpResponseMessage> GetSubjectFlow([FromUri]string flow = null, [FromUri]string teacher = null,
+            [FromUri]string subject = null, [FromUri]string semester = null)
         {
-            return null;
-        }
+            Response response = new Response();
+            var flowsSubjects = await FlowSubject.GetCollectionAsync();
 
+            if (!string.IsNullOrEmpty(flow)) //отбор по потоку
+                flowsSubjects = flowsSubjects.FindAll(x => x.FlowId == flow);
 
-        // GET: api/Subjects/ignore/5
-        // возвращает игнор-список студентов для данного предмета
-        [HttpGet]
-        [Route("api/Subjects/ignore/{subjectId}")]
-        public async Task<dynamic> GetIgnore(string subjectId)
-        {
-            return null;
+            if (!string.IsNullOrEmpty(teacher)) //отбор по преподавателю
+                flowsSubjects = flowsSubjects.FindAll(x => x.TeacherId == teacher);
+
+            if (!string.IsNullOrEmpty(subject)) //отбор по предмету
+                flowsSubjects = flowsSubjects.FindAll(x => x.SubjectId == subject);
+
+            if (!string.IsNullOrEmpty(semester)) //отбор по семестру
+                flowsSubjects = flowsSubjects.FindAll(x => x.SemesterId == semester);
+
+            response.Data = flowsSubjects;
+            if (flowsSubjects.Count > 0)
+                return Request.CreateResponse(HttpStatusCode.OK, response);
+            else
+                return Request.CreateResponse(HttpStatusCode.NoContent, response);
         }
 
 
         // POST: api/Subjects
-        // добавление нового предмета
-        public async Task<dynamic> Post([FromBody]SubjectModels subject)
+        //добавить новый предмет (администратор, администратор кафедры)
+        public async Task<HttpResponseMessage> Post([FromBody]Subject subject)
         {
-            return null;
+            //идентификация пользователя
+            string token = Request?.Headers?.Authorization?.Scheme;
+            NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
+
+            if (authProvider != null)
+            {
+                //првоерка наличия прав доступа
+                bool commonRight = default(bool),
+                    departRight = default(bool);
+                Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.GROUP_COMMON_PERMISSION),
+                    () => departRight = authProvider.CheckPermission(Permission.GROUP_PERMISSION) ?
+                                         authProvider.Departments.Contains(subject.DepartmentID) : false);
+
+                if(commonRight || departRight)
+                {
+                    if (await subject.Push())
+                        return Request.CreateResponse(HttpStatusCode.Created);
+                    else
+                        return Request.CreateResponse(HttpStatusCode.BadRequest);
+                }
+                else
+                    return Request.CreateResponse(HttpStatusCode.Forbidden);
+            }
+            else
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
         }
 
 
-        // POST: api/Subjects
-        // установка предмета в план для группы (группа-семестр)
+        // добавить поток-предмет-семестр (администратор, администратор кафедры)
         [HttpPost]
-        [Route("api/Subjects/plan")]
-        public async Task<dynamic> PostPlan([FromBody]SubjectGroupSemesterModels subjectGroupSemester)
+        [Route("api/Subjects/flow")]
+        public async Task<HttpResponseMessage> PostFlowSubject([FromBody]FlowSubject flowSubject)
         {
-            return null;
-        }
+            //идентификация пользователя
+            string token = Request?.Headers?.Authorization?.Scheme;
+            NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
+            if(authProvider == null)
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
 
+            //поиск предмета
+            Subject subject = await Subject.GetInstanceAsync(flowSubject.SubjectId);
+            if(subject == null)
+                return Request.CreateResponse(HttpStatusCode.BadRequest);
 
-        // POST: api/Subjects/ignore
-        // добавление игнорирования студента для данного предмета
-        [HttpPost]
-        [Route("api/Subjects/ignore/{subjectId}/{studentId}")]
-        public async Task<dynamic> PostIgnore(string subjectId, string studentId)
-        {
-            return null;
+            //проверка наличия прав доступа
+            bool commonRight = default(bool),
+                departRight = default(bool);
+            Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.GROUP_COMMON_PERMISSION),
+                () => departRight = authProvider.CheckPermission(Permission.GROUP_PERMISSION) ?
+                                     authProvider.Departments.Contains(subject.DepartmentID) : false);
+
+            if (commonRight || departRight)
+            {
+                if (await flowSubject.Push())
+                    return Request.CreateResponse(HttpStatusCode.OK);
+                else
+                    return Request.CreateResponse(HttpStatusCode.BadRequest);
+            }
+            else
+                return Request.CreateResponse(HttpStatusCode.Forbidden);
         }
 
 
         // PUT: api/Subjects/5
-        // изменить информацию о предмете (название, общая информация, кафедра)
-        public async Task<dynamic> Put(string id, [FromBody]SubjectModels subject)
-        {
-            return null;
-        }
-
-
-        // PUT: api/Subjects/5
-        // изменить предмет в плане
+        //изменить информацию о предмете (администратор, администратор кафедры)
         [HttpPut]
-        [Route("api/Subjects/plan/{id}")]
-        public async Task<dynamic> Put(string id, [FromBody]SubjectGroupSemesterModels subjectGroup)
+        [Route("api/Subjects/{id}")]
+        public async Task<HttpResponseMessage> Put(string id, [FromBody]Subject subject)
         {
-            return null;
-        }
+            //идентификация пользователя
+            string token = Request?.Headers?.Authorization?.Scheme;
+            NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
 
+            if (authProvider != null)
+            {
+                //првоерка наличия прав доступа
+                bool commonRight = default(bool),
+                    departRight = default(bool);
+                Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.GROUP_COMMON_PERMISSION),
+                    () => departRight = authProvider.CheckPermission(Permission.GROUP_PERMISSION) ?
+                                         authProvider.Departments.Contains(subject.DepartmentID) : false);
 
-        // DELETE: api/Subjects/plan/5
-        // удалить предмет из плана
-        [HttpDelete]
-        [Route("api/Subjects/plan/{id}")]
-        public dynamic DeletePlan(string id)
-        {
-            return null;
+                if (commonRight || departRight)
+                {
+                    subject.ID = id;
+                    if (await subject.Update())
+                        return Request.CreateResponse(HttpStatusCode.OK);
+                    else
+                        return Request.CreateResponse(HttpStatusCode.BadRequest);
+                }
+                else
+                    return Request.CreateResponse(HttpStatusCode.Forbidden);
+            }
+            else
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
         }
 
 
         // DELETE: api/Subjects/5
-        // удалить предмет
-        public dynamic Delete(int id)
+        // удалить предмет (администратор, администратор кафедры)
+        [HttpDelete]
+        [Route("api/Subjects/{id}")]
+        public async Task<HttpResponseMessage> Delete(string id)
         {
-            return null;
+            //идентификация пользователя
+            string token = Request?.Headers?.Authorization?.Scheme;
+            NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
+            if(authProvider == null)
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
+
+            Subject subject = await Subject.GetInstanceAsync(id);
+            if(subject == null)
+                return Request.CreateResponse(HttpStatusCode.BadRequest);
+
+            //првоерка наличия прав доступа
+            bool commonRight = default(bool),
+                departRight = default(bool);
+            Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.GROUP_COMMON_PERMISSION),
+                () => departRight = authProvider.CheckPermission(Permission.GROUP_PERMISSION) ?
+                                     authProvider.Departments.Contains(subject.DepartmentID) : false);
+
+            if (commonRight || departRight)
+            {
+                if (subject.Delete())
+                    return Request.CreateResponse(HttpStatusCode.OK);
+                else
+                    return Request.CreateResponse(HttpStatusCode.BadRequest);
+            }
+            else
+                return Request.CreateResponse(HttpStatusCode.Forbidden);
         }
 
 
-        // DELETE: api/Subjects/Ignore/5/5
+        // удалить поток-предмет-семестр (администратор, администратор кафедры)
         [HttpDelete]
-        [Route("api/Subjects/ignore/{subjectId}/{studentId}")]
-        public dynamic DeleteIgnor(string subjectId, string studentId)
+        [Route("api/Subjects/flow/{id}")]
+        public async Task<HttpResponseMessage> DeleteFlowSubject(string id)
         {
-            return null;
+            //идентификация пользователя
+            string token = Request?.Headers?.Authorization?.Scheme;
+            NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
+            if (authProvider == null)
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
+
+            //поиск поток-предмета
+            FlowSubject flowSubject = await FlowSubject.GetInstanceAsync(id);
+            if(flowSubject == null)
+                return Request.CreateResponse(HttpStatusCode.BadRequest);
+
+            //поиск предмета
+            Subject subject = await Subject.GetInstanceAsync(flowSubject.SubjectId);
+            if (subject == null)
+                return Request.CreateResponse(HttpStatusCode.BadRequest);
+
+            //проверка наличия прав доступа
+            bool commonRight = default(bool),
+                departRight = default(bool);
+            Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.GROUP_COMMON_PERMISSION),
+                () => departRight = authProvider.CheckPermission(Permission.GROUP_PERMISSION) ?
+                                     authProvider.Departments.Contains(subject.DepartmentID) : false);
+
+            if (commonRight || departRight)
+            {
+                if (flowSubject.Delete())
+                    return Request.CreateResponse(HttpStatusCode.OK);
+                else
+                    return Request.CreateResponse(HttpStatusCode.BadRequest);
+            }
+            else
+                return Request.CreateResponse(HttpStatusCode.Forbidden);
         }
     }
 }

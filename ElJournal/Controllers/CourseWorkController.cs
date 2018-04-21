@@ -194,9 +194,6 @@ namespace ElJournal.Controllers
         }
 
 
-        }
-
-
         // POST: api/CourseWork/Plan/5/5
         // добавить курсовую работу в план по предмету (администратор, преподаватель)
         [HttpPost]
@@ -219,7 +216,7 @@ namespace ElJournal.Controllers
                         teacherRight = default(bool);
                     Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.CRSWRK_COMMON_PERMISSION),
                         () => teacherRight = authProvider.CheckPermission(Permission.CRSWRK_PERMISSION) ?
-                                             authProvider.Subjects.Contains(subjectId) : false);
+                                             authProvider.FlowsSubjects.Contains(subjectId) : false);
 
                     if (commonRight || teacherRight)
                     {
@@ -275,7 +272,7 @@ namespace ElJournal.Controllers
                         teacherRight = default(bool);
                     Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.CRSWRK_COMMON_PERMISSION),
                         () => teacherRight = authProvider.CheckPermission(Permission.CRSWRK_PERMISSION) ?
-                                             authProvider.Subjects.Contains(subjectId) : false);
+                                             authProvider.FlowsSubjects.Contains(subjectId) : false);
 
                     DB db = DB.GetInstance();
                     var parameters = new Dictionary<string, string>
@@ -335,7 +332,7 @@ namespace ElJournal.Controllers
                     teacherRight = default(bool);
                 Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.CRSWRK_COMMON_PERMISSION),
                     () => teacherRight = authProvider.CheckPermission(Permission.CRSWRK_PERMISSION) ?
-                                         authProvider.Subjects.Contains(subjectId) : false);
+                                         authProvider.FlowsSubjects.Contains(subjectId) : false);
 
                 if(teacherRight || commonRight)
                 {
@@ -360,11 +357,6 @@ namespace ElJournal.Controllers
             }
         }
 
-            try
-            {
-                //проверка наличия прав пользователя
-                bool right = authProvider.CheckPermission(Permission.LBWRK_COMMON_PERMISSION) ||
-                    authProvider.CourseWorks.Contains(id);
 
         // PUT: api/CourseWork/5
         // изменить данные о курсовой работе (администратор, создатель)
@@ -465,7 +457,7 @@ namespace ElJournal.Controllers
                     teacherRight = default(bool);
                 Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.CRSWRK_COMMON_PERMISSION),
                     () => teacherRight = authProvider.CheckPermission(Permission.CRSWRK_PERMISSION) ?
-                                         authProvider.Subjects.Contains(subjectId) : false);
+                                         authProvider.FlowsSubjects.Contains(subjectId) : false);
 
                 try
                 {

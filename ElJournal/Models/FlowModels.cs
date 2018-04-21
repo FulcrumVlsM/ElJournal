@@ -8,21 +8,21 @@ using System.Web;
 
 namespace ElJournal.Models
 {
-    public class Faculty
+    public class Flow
     {
         public string ID { get; set; }
         public string Name { get; set; }
-        public string DekanId { get; set; }
-        public string Info { get; set; }
+        public string AltName { get; set; }
+        public string FacultyId { get; set; }
 
         /// <summary>
-        /// Возвращает факультет по id
+        /// Возвращает поток по id
         /// </summary>
-        /// <param name="id">id факультета</param>
+        /// <param name="id">id предмета</param>
         /// <returns></returns>
-        public static async Task<Faculty> GetInstanceAsync(string id)
+        public static async Task<Flow> GetInstanceAsync(string id)
         {
-            string sqlQuery = "select * from Faculties where ID=@id";
+            string sqlQuery = "select * from Flows where ID=@id";
             var parameters = new Dictionary<string, string>
             {
                 { "@id", id }
@@ -30,14 +30,14 @@ namespace ElJournal.Models
             try
             {
                 DB db = DB.GetInstance();
-                var obj = await db.ExecSelectQuerySingleAsync(sqlQuery, parameters);
-                if (obj != null)
-                    return new Faculty
+                var result = await db.ExecSelectQuerySingleAsync(sqlQuery, parameters);
+                if (result != null)
+                    return new Flow
                     {
-                        ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : null,
-                        Name = obj.ContainsKey("name") ? obj["name"].ToString() : null,
-                        DekanId = obj.ContainsKey("dekanPersonID") ? obj["dekanPersonID"].ToString() : null,
-                        Info = obj.ContainsKey("info") ? obj["info"].ToString() : null
+                        ID = result.ContainsKey("ID") ? result["ID"].ToString() : null,
+                        Name = result.ContainsKey("name") ? result["name"].ToString() : null,
+                        FacultyId = result.ContainsKey("FacultyID") ? result["FacultyID"].ToString() : null,
+                        AltName = result.ContainsKey("altName") ? result["altName"].ToString() : null
                     };
                 else
                     return null;
@@ -51,25 +51,38 @@ namespace ElJournal.Models
         }
 
         /// <summary>
+        /// Возвращает полный список потоков
+        /// </summary>
+        /// <returns></returns>
+        public static async Task<List<Flow>> GetCollectionAsync()
+        {
+            string sqlQuery = "select * from Flows";
+            DB db = DB.GetInstance();
+            var result = await db.ExecSelectQueryAsync(sqlQuery);
+            var flows = ToFlows(result);
+            return flows;
+        }
+
+        /// <summary>
         /// Производит преобразование коллекции, полученной методами класса DB в коллекцию моделей
         /// </summary>
-        /// <param name="facultyList"></param>
+        /// <param name="flowList"></param>
         /// <returns></returns>
-        public static List<Faculty> ToFaculties(List<Dictionary<string, dynamic>> facultyList)
+        public static List<Flow> ToFlows(List<Dictionary<string, dynamic>> flowList)
         {
-            if (facultyList.Count == 0)
+            if (flowList.Count == 0)
                 return null;
             else
             {
-                var flows = new List<Faculty>(facultyList.Count);
-                foreach (var obj in facultyList)
+                var flows = new List<Flow>(flowList.Count);
+                foreach (var obj in flowList)
                 {
-                    flows.Add(new Faculty
+                    flows.Add(new Flow
                     {
                         ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : null,
                         Name = obj.ContainsKey("name") ? obj["name"].ToString() : null,
-                        DekanId = obj.ContainsKey("dekanPersonID") ? obj["dekanPersonID"].ToString() : null,
-                        Info = obj.ContainsKey("info") ? obj["info"].ToString() : null
+                        FacultyId = obj.ContainsKey("FacultyID") ? obj["FacultyID"].ToString() : null,
+                        AltName = obj.ContainsKey("altName") ? obj["altName"].ToString() : null
                     });
                 }
                 return flows;
@@ -77,30 +90,17 @@ namespace ElJournal.Models
         }
 
         /// <summary>
-        /// Возвращает полный список факультетов
-        /// </summary>
-        /// <returns></returns>
-        public static async Task<List<Faculty>> GetCollectionAsync()
-        {
-            string sqlQuery = "select ID,name from Faculties";
-            DB db = DB.GetInstance();
-            var result = await db.ExecSelectQueryAsync(sqlQuery);
-            var flows = ToFaculties(result);
-            return flows;
-        }
-
-        /// <summary>
-        /// Сохраняет текущий объект Faculty в БД
+        /// Сохраняет текущий объект Flow в БД
         /// </summary>
         /// <returns>True, если объект был добавлен в БД</returns>
         public async Task<bool> Push()
         {
-            string procName = "dbo.AddFaculty";
+            string procName = "dbo.AddFlow";
             var parameters = new Dictionary<string, string>
             {
                 { "@name", Name },
-                { "@info", Info},
-                { "@dekanID", DekanId }
+                { "@altName", AltName},
+                { "@facultyId", FacultyId }
             };
             try
             {
@@ -121,13 +121,12 @@ namespace ElJournal.Models
         /// <returns></returns>
         public async Task<bool> Update()
         {
-            string procName = "dbo.UpdateFaculty";
+            string procName = "dbo.UpdateFlow";
             var parameters = new Dictionary<string, string>
             {
                 { "@ID", ID },
                 { "@name", Name },
-                { "@info", Info },
-                { "@dekanId", DekanId }
+                { "@altName", AltName }
             };
             try
             {
@@ -148,7 +147,7 @@ namespace ElJournal.Models
         /// <returns></returns>
         public bool Delete()
         {
-            string procName = "dbo.DeleteFaculty";
+            string procName = "dbo.DeleteFlow";
             var parameters = new Dictionary<string, string>
             {
                 { "@id", ID }

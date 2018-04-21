@@ -230,6 +230,10 @@ namespace ElJournal.DBInteract
                 try
                 {
                     result = await query.ExecuteScalarAsync();//выполнение запроса
+                    if (result is DBNull)
+                        result = null;
+                    conn.Close();//закрытие подклчения
+                    return result;
                 }
                 catch(SqlException e)
                 {
@@ -237,9 +241,6 @@ namespace ElJournal.DBInteract
                     conn.Close();
                     throw e;
                 }
-
-                conn.Close();//закрытие подклчения
-                return result;
             });
         }
 
@@ -537,6 +538,9 @@ namespace ElJournal.DBInteract
 
         public const string CRSWRK_PERMISSION = "CRSWRK_PERMISSION";
         public const string CRSWRK_COMMON_PERMISSION = "CRSWRK_COMMON_PERMISSION";
+
+        public const string GROUP_PERMISSION = "GROUP_PERMISSION";
+        public const string GROUP_COMMON_PERMISSION = "GROUP_COMMON_PERMISSION";
 
 
     }
