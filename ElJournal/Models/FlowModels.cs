@@ -13,7 +13,7 @@ namespace ElJournal.Models
         public string ID { get; set; }
         public string Name { get; set; }
         public string AltName { get; set; }
-        public string FacultyId { get; set; }
+        public string DepartmentId { get; set; }
 
         /// <summary>
         /// Возвращает поток по id
@@ -36,7 +36,7 @@ namespace ElJournal.Models
                     {
                         ID = result.ContainsKey("ID") ? result["ID"].ToString() : null,
                         Name = result.ContainsKey("name") ? result["name"].ToString() : null,
-                        FacultyId = result.ContainsKey("FacultyID") ? result["FacultyID"].ToString() : null,
+                        DepartmentId = result.ContainsKey("DepartmentID") ? result["DepartmentID"].ToString() : null,
                         AltName = result.ContainsKey("altName") ? result["altName"].ToString() : null
                     };
                 else
@@ -81,7 +81,7 @@ namespace ElJournal.Models
                     {
                         ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : null,
                         Name = obj.ContainsKey("name") ? obj["name"].ToString() : null,
-                        FacultyId = obj.ContainsKey("FacultyID") ? obj["FacultyID"].ToString() : null,
+                        DepartmentId = obj.ContainsKey("DepartmentID") ? obj["DepartmentID"].ToString() : null,
                         AltName = obj.ContainsKey("altName") ? obj["altName"].ToString() : null
                     });
                 }
@@ -100,7 +100,7 @@ namespace ElJournal.Models
             {
                 { "@name", Name },
                 { "@altName", AltName},
-                { "@facultyId", FacultyId }
+                { "@departmentId", DepartmentId }
             };
             try
             {

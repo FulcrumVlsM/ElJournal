@@ -61,10 +61,10 @@ namespace ElJournal.Models
                 return null;
             else
             {
-                var flows = new List<Faculty>(facultyList.Count);
+                var faculties = new List<Faculty>(facultyList.Count);
                 foreach (var obj in facultyList)
                 {
-                    flows.Add(new Faculty
+                    faculties.Add(new Faculty
                     {
                         ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : null,
                         Name = obj.ContainsKey("name") ? obj["name"].ToString() : null,
@@ -72,7 +72,7 @@ namespace ElJournal.Models
                         Info = obj.ContainsKey("info") ? obj["info"].ToString() : null
                     });
                 }
-                return flows;
+                return faculties;
             }
         }
 
