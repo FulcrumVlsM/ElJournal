@@ -9,6 +9,7 @@ using ElJournal.Models;
 using ElJournal.DBInteract;
 using System.Web.Http.Controllers;
 using ElJournal.Providers;
+using System.Text.RegularExpressions;
 
 namespace ElJournal.Controllers
 {
@@ -20,259 +21,153 @@ namespace ElJournal.Controllers
         //история запросов: ip клиента - время последнего запроса
         private static Dictionary<string, DateTime> _clientsHistory = new Dictionary<string, DateTime>(30);
         private static int _timeOut = 10; //промежуток отправки запросов
-        
+
+        // получить список всех пользователей (все)
+        // получить пользователя по ID (все рег. пользователи, админ видит всю инфу)
+        // добавить пользователя (администратор)
+        // изменить пользователя (администратор)
+        // удалить пользователя (администратор)
+
+        // добавить пользователя на указанный факультет (администратор)
+        // удалить пользователя из указанного факультета (администратор)
+        // добавить пользователя к указанной кафедре (администратор)
+        // удалить пользователя из указанной кафедры (администратор)
+
+        // обновить токен (все рег. пользователи)
+
 
 
         // GET: api/Persons
-        // Authorization: token
-        // Отправка запроса с одного клиента доступна не чаще чем 1 раз в _timeOut
-        public async Task<dynamic> Get()
+        // получить список всех пользователей (все)
+        public async Task<HttpResponseMessage> Get([FromUri]string name = null, [FromUri]string roleId = null, [FromUri]int count = 50)
         {
-            RespPerson response = new RespPerson();//формат ответа
-            string clientIP = Request?.GetOwinContext()?.Request?.RemoteIpAddress;//ip клиента
-            string token = Request?.Headers?.Authorization?.Scheme; //id пользователя
-            string sqlQueryOutAuth = "select ID, name, info from People";//запрос для неавторизированного пользователя
-            string sqlQueryWithAuth = "select * from People";//запрос для авторизированного пользователя
-
-            if (!findLast(response, clientIP))//если не прошло время ожидания след. запроса
-                return response;
-
-            try
+            Response response = new Response();
+            var people = await Person.GetCollectionAsync();
+            if (!string.IsNullOrEmpty(roleId))
+                people = people.FindAll(x => x.RoleId == roleId); //отбор по праву
+            if (!string.IsNullOrEmpty(name))
             {
-                DB db = DB.GetInstance();
-                string sqlQuery;
-                bool right = await db.CheckPermission(token, Permission.PERSON_COMMON_PERMISSION);//проверка прав пользователя
-                if (right)
-                    sqlQuery = sqlQueryWithAuth;
-                else
-                    sqlQuery = sqlQueryOutAuth;
-
-                response.Data = await db.ExecSelectQueryAsync(sqlQuery);//выполнение sql запроса
-                response.Succesful = true;
-
-                _clientsHistory[clientIP] = DateTime.Now;    //добавление запроса в историю
-                response.NextRequestTo = DateTime.UtcNow.AddMinutes(_timeOut);
+                Regex regex = new Regex(name); //поиск по ФИО
+                people = people.FindAll(x => regex.IsMatch(x.Name) || regex.IsMatch(x.Surname) || regex.IsMatch(x.Patronymic));
             }
-            catch (Exception e)
-            {
-                response.Error = e.ToString();
-                response.message = e.Message;
-                //TODO: add log
-            }
+            people = people.GetRange(0, count); //отбор количества count
+            response.Data = people;
+            if (people.Count > 0)
+                return Request.CreateResponse(HttpStatusCode.OK, response);
+            else
+                return Request.CreateResponse(HttpStatusCode.NoContent, response);
 
-            new Task(clearHistory).Start();//очистка истории (значения старше одного часа)
-            return response;
         }
 
         // GET: api/Persons/5
-        // Authorization: token
-        public async Task<dynamic> Get(string id)
+        // получить пользователя по ID (все, админ видит конфиденциальную инфу)
+        public async Task<HttpResponseMessage> Get(string id)
         {
-            Response response = new Response();//формат ответа
-            Dictionary<string, string> parameters = new Dictionary<string, string>();//параметры sql запроса
-            string token = Request?.Headers?.Authorization?.Scheme; //id пользователя из заголовка http
-            string sqlQueryWithAuth = "select * from People where ID=@id"; //запрос для авторизованного пользователя
-            string sqlQueryOutAuth = "select ID name,info from" +
-                " People where ID=@id";//запрос для неавторизованного пользователя
+            Response response = new Response();
 
-            try
-            {
-                DB db = DB.GetInstance();
-                bool right = await db.CheckPermission(token, Permission.PERSON_COMMON_PERMISSION);//авторизация пользователя
-                string sqlQuery;
-                if (right) //если права имеются
-                    sqlQuery = sqlQueryWithAuth;
-                else
-                    sqlQuery = sqlQueryOutAuth;
+            //идентификация пользователя
+            string token = Request?.Headers?.Authorization?.Scheme;
+            NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
 
-                parameters.Add("@id", id);
-                response.Data = await db.ExecSelectQueryAsync(sqlQuery, parameters);//запрос в бд
-                response.Succesful = true;
-            }
-            catch (Exception e)
-            {
-                response.Error = e.ToString();
-                response.message = e.Message;
-                //TODO: add log
-            }
+            Person person;
+            bool commonRight = authProvider?.CheckPermission(Permission.PERSON_COMMON_PERMISSION) ?? false;
 
-            return response;
+            if (commonRight)
+                person = await Person.GetInstanceAsync(id);
+            else
+                person = await Person.GetPublicInstanceAsync(id);
+
+            response.Data = person;
+            if (person != null)
+                return Request.CreateResponse(HttpStatusCode.OK, response);
+            else
+                return Request.CreateResponse(HttpStatusCode.NotFound, response);
         }
 
-        //TODO: метод еще пустой
-        //GET: api/Persons?name=...
-        //Authorization: token
-        public async Task<dynamic> Get([FromUri]string name,[FromUri]int count=5)
-        {
-            Response response = new Response();//формат ответа
-            Dictionary<string, string> parameters = new Dictionary<string, string>();//параметры sql запроса
-            string token = Request?.Headers?.Authorization?.Scheme; //id пользователя из заголовка http
-            string sqlQueryWithAuth = "select top @count " +
-                "* from dbo.GetPeopleForName(@regex)"; //запрос для авторизованного пользователя
-            string sqlQueryOutAuth = "select top @count ID name,info from" +
-                " dbo.GetPeopleForName(@regex)";//запрос для неавторизованного пользователя
-
-            try
-            {
-                DB db = DB.GetInstance();
-                bool right = await db.CheckPermission(token, Permission.PERSON_COMMON_PERMISSION);//авторизация пользователя
-                string sqlQuery;
-                if (right) //если права имеются
-                    sqlQuery = sqlQueryWithAuth;
-                else
-                    sqlQuery = sqlQueryOutAuth;
-
-                parameters.Add("@regex", name);
-                parameters.Add("@count", count.ToString());
-                response.Data = await db.ExecSelectQueryAsync(sqlQuery, parameters);//запрос в бд
-                response.Succesful = true;
-            }
-            catch (Exception e)
-            {
-                response.Error = e.ToString();
-                response.message = e.Message;
-                //TODO: add log
-            }
-
-            return response;
-        }
 
         // POST: api/Persons
-        //Authorization: token
-        public async Task<dynamic> Post([FromBody]Person person)
+        // добавить пользователя (администратор)
+        public async Task<HttpResponseMessage> Post([FromBody]Person person)
         {
-            Response response = new Response(); //формат ответа
-            string token = Request?.Headers?.Authorization?.Scheme; //id пользователя из заголовка http
-            var parameters = new Dictionary<string, string>();
+            //идентификация пользователя
+            string token = Request?.Headers?.Authorization?.Scheme;
+            NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
+            if (authProvider != null)
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
 
-            //
-            string sqlAddQuery = "dbo.AddPerson";
-            string sqlGetId = "select top 1 ID from Persons where ID=@name and passport_id=@passport_id";
-
-            try
+            //првоерка наличия прав на операцию
+            bool commonRight = authProvider.CheckPermission(Permission.PERSON_COMMON_PERMISSION);
+            if (commonRight)
             {
-                DB db = DB.GetInstance();
-                bool right = await db.CheckPermission(token, Permission.PERSON_COMMON_PERMISSION);//авторизация пользователя
-                if (right)
-                {
-                    parameters.Add("@RolesID", person.RolesId); //добавление параметров к запросу
-                    parameters.Add("@name", person.name);
-                    parameters.Add("@student_id", person.student_id);
-                    parameters.Add("@passport_id", person.avn_login);
-                    parameters.Add("@avn_login", person.avn_login);
-                    parameters.Add("@info", person.info);
-
-                    int res = db.ExecStoredProcedure(sqlAddQuery, parameters); //получение данных из бд
-                    if (res == 0)//процедура вернет 0 при успешном завершении операции
-                    {
-                        response.Succesful = true;
-                        response.message = "Person was added";
-                        response.Data = 
-                            new { ID = await db.ExecuteScalarQueryAsync(sqlGetId, parameters) };//получение id созданной записи
-                    }
-                    else
-                        response.message = "Person not added";
-                }
+                if (await person.Push())
+                    return Request.CreateResponse(HttpStatusCode.Created);
                 else
-                    response.Error = ErrorMessage.PERMISSION_ERROR;
+                    return Request.CreateResponse(HttpStatusCode.Conflict);
             }
-            catch(Exception e)
-            {
-                response.Error = e.ToString();
-                response.message = e.Message;
-                //TODO: add log
-            }
-
-            return response;
+            else
+                return Request.CreateResponse(HttpStatusCode.Forbidden);
         }
 
         // PUT: api/Persons/5
-        //Authorization: token
-        public async Task<dynamic> Put(string id, [FromBody]Person person)
+        // изменить пользователя (администратор)
+        public async Task<HttpResponseMessage> Put(string id, [FromBody]Person person)
         {
-            Response response = new Response(); //формат ответа
-            string token = Request?.Headers?.Authorization?.Scheme; //id пользователя из заголовка http
-            var parameters = new Dictionary<string, string>();
-            string sqlQuery = "dbo.UpdatePerson";
+            //идентификация пользователя
+            string token = Request?.Headers?.Authorization?.Scheme;
+            NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
+            if (authProvider != null)
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
 
-            try
+            //првоерка наличия прав на операцию
+            bool commonRight = authProvider.CheckPermission(Permission.PERSON_COMMON_PERMISSION);
+            if (commonRight)
             {
-                DB db = DB.GetInstance();
-                bool right = await db.CheckPermission(token, Permission.PERSON_COMMON_PERMISSION);
-                if (right)//если у пользователя есть права на операцию
-                {
-                    parameters.Add("@ID", id);
-                    parameters.Add("@RolesID", person.RolesId);//добавление параметров к запросу
-                    parameters.Add("@name", person.name);
-                    parameters.Add("@student_id", person.student_id);
-                    parameters.Add("@passport_id", person.passport_id);
-                    parameters.Add("@avn_login", person.avn_login);
-                    parameters.Add("@info", person.info);
-
-                    int res = db.ExecStoredProcedure(sqlQuery, parameters);//выполнение запроса
-                    if (res == 0)
-                    {
-                        response.Succesful = true;
-                        response.message = "Person data was changed";
-                    }
-                    else
-                        response.message = "Person data was't changed";
-                }
+                person.ID = id;
+                if (await person.Update())
+                    return Request.CreateResponse(HttpStatusCode.OK);
                 else
-                    response.Error = ErrorMessage.PERMISSION_ERROR;
+                    return Request.CreateResponse(HttpStatusCode.BadRequest);
             }
-            catch(Exception e)
-            {
-                response.Error = e.ToString();
-                response.message = e.Message;
-                //TODO: add log
-            }
-            return response;
+            else
+                return Request.CreateResponse(HttpStatusCode.Forbidden);
         }
+
+
+        // DELETE: api/Persons/5
+        // удалить пользователя (администратор)
+        public async Task<HttpResponseMessage> Delete(string id)
+        {
+            //идентификация пользователя
+            string token = Request?.Headers?.Authorization?.Scheme;
+            NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
+            if (authProvider != null)
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
+
+            //поиск указанного пользователя
+            Person person = await Person.GetInstanceAsync(id);
+            if (person == null)
+                return Request.CreateResponse(HttpStatusCode.BadRequest);
+
+            //првоерка наличия прав на операцию
+            bool commonRight = authProvider.CheckPermission(Permission.PERSON_COMMON_PERMISSION);
+            if (commonRight)
+            {
+                if (await person.Update())
+                    return Request.CreateResponse(HttpStatusCode.OK);
+                else
+                    return Request.CreateResponse(HttpStatusCode.BadRequest);
+            }
+            else
+                return Request.CreateResponse(HttpStatusCode.Forbidden);
+        }
+
+
 
         [HttpGet]
         [Route("api/People/UpdateToken")]
         public async Task<dynamic> UpdateToken([FromBody]AccountModels auth)
         {
             return null;
-        }
-
-        // DELETE: api/Persons/5
-        //Authorization: token
-        public async Task<dynamic> Delete(string id)
-        {
-            Response response = new Response(); //формат ответа
-            string token = Request?.Headers?.Authorization?.Scheme; //id пользователя из заголовка http
-            var parameters = new Dictionary<string, string>();
-            string sqlQuery = "delete from People where ID=@id";
-
-            try
-            {
-                DB db = DB.GetInstance();
-                bool right = await db.CheckPermission(token, Permission.PERSON_COMMON_PERMISSION);
-                if (right)
-                {
-                    parameters.Add("@id", id);//добавление параметра к запросу
-                    int res = db.ExecInsOrDelQuery(sqlQuery, parameters); //выполнение запроса
-                    if (res != 0)  //TODO: возможно лучше сделать условие res==1, чтобы гарантировать удаление одной записи
-                    {
-                        response.Succesful = true;
-                        response.message = "Person was delete";
-                    }
-                    else
-                        response.message = "Person wasn't delete";
-                }
-                else
-                    response.Error = ErrorMessage.PERMISSION_ERROR;
-            }
-            catch(Exception e)
-            {
-                response.Error = e.ToString();
-                response.message = e.Message;
-                //TODO: add log
-            }
-
-            return response;
         }
 
 

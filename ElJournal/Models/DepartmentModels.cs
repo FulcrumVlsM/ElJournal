@@ -83,10 +83,18 @@ namespace ElJournal.Models
         public static async Task<List<Department>> GetCollectionAsync()
         {
             string sqlQuery = "select ID,name from Departments";
-            DB db = DB.GetInstance();
-            var result = await db.ExecSelectQueryAsync(sqlQuery);
-            var flows = ToDepartments(result);
-            return flows;
+            try
+            {
+                DB db = DB.GetInstance();
+                var result = await db.ExecSelectQueryAsync(sqlQuery);
+                return ToDepartments(result);
+            }
+            catch(Exception e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Fatal(e.ToString()); //запись лога с ошибкой
+                return null;
+            }
         }
 
         /// <summary>

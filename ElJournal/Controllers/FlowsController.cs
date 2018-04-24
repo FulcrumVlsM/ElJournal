@@ -51,8 +51,8 @@ namespace ElJournal.Controllers
             {
                 bool commonRight = default(bool),
                     facultyRight = default(bool);
-                Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.FACULTY_COMMON_PERMISSION),
-                    () => facultyRight = authProvider.CheckPermission(Permission.FACULTY_PERMISSION) ?
+                Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.DEPARTMENT_COMMON_PERMISSION),
+                    () => facultyRight = authProvider.CheckPermission(Permission.DEPARTMENT_PERMISSION) ?
                                          authProvider.Faculties.Contains(flow.DepartmentId) : false);
 
                 if(commonRight || facultyRight)
@@ -84,8 +84,8 @@ namespace ElJournal.Controllers
 
                 bool commonRight = default(bool),
                     facultyRight = default(bool);
-                Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.FACULTY_COMMON_PERMISSION),
-                    () => facultyRight = authProvider.CheckPermission(Permission.FACULTY_PERMISSION) ?
+                Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.DEPARTMENT_COMMON_PERMISSION),
+                    () => facultyRight = authProvider.CheckPermission(Permission.DEPARTMENT_PERMISSION) ?
                                          authProvider.Faculties.Contains(flow.DepartmentId) : false);
 
                 if (commonRight || facultyRight)
@@ -121,8 +121,8 @@ namespace ElJournal.Controllers
             //првоерка наличия прав на операцию
             bool commonRight = default(bool),
                     facultyRight = default(bool);
-            Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.FACULTY_COMMON_PERMISSION),
-                () => facultyRight = authProvider.CheckPermission(Permission.FACULTY_PERMISSION) ?
+            Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.DEPARTMENT_COMMON_PERMISSION),
+                () => facultyRight = authProvider.CheckPermission(Permission.DEPARTMENT_PERMISSION) ?
                                      authProvider.Faculties.Contains(flow.DepartmentId) : false);
 
             if (commonRight || facultyRight)

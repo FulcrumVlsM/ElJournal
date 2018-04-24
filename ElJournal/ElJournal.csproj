@@ -220,6 +220,8 @@
     <Compile Include="Controllers\MessagesController.cs" />
     <Compile Include="Controllers\PeopleController.cs" />
     <Compile Include="Controllers\PracticeWorkController.cs" />
+    <Compile Include="Controllers\RightsController.cs" />
+    <Compile Include="Controllers\RolesController.cs" />
     <Compile Include="Controllers\ScheduleController.cs" />
     <Compile Include="Controllers\SemesterController.cs" />
     <Compile Include="Controllers\StudentsController.cs" />
