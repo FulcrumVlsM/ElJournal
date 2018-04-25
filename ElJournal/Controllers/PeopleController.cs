@@ -39,7 +39,8 @@ namespace ElJournal.Controllers
 
         // GET: api/Persons
         // получить список всех пользователей (все)
-        public async Task<HttpResponseMessage> Get([FromUri]string name = null, [FromUri]string roleId = null, [FromUri]int count = 50)
+        public async Task<HttpResponseMessage> Get([FromUri]string name = null, [FromUri]string roleId = null, 
+            [FromUri]int count = 30)
         {
             Response response = new Response();
             var people = await Person.GetCollectionAsync();
@@ -50,7 +51,7 @@ namespace ElJournal.Controllers
                 Regex regex = new Regex(name); //поиск по ФИО
                 people = people.FindAll(x => regex.IsMatch(x.Name) || regex.IsMatch(x.Surname) || regex.IsMatch(x.Patronymic));
             }
-            people = people.GetRange(0, count); //отбор количества count
+            people = (people.Take(count)).ToList(); //отбор указанного количества
             response.Data = people;
             if (people.Count > 0)
                 return Request.CreateResponse(HttpStatusCode.OK, response);
@@ -61,6 +62,8 @@ namespace ElJournal.Controllers
 
         // GET: api/Persons/5
         // получить пользователя по ID (все, админ видит конфиденциальную инфу)
+        [HttpGet]
+        [Route("api/People/{id}")]
         public async Task<HttpResponseMessage> Get(string id)
         {
             Response response = new Response();
@@ -92,7 +95,7 @@ namespace ElJournal.Controllers
             //идентификация пользователя
             string token = Request?.Headers?.Authorization?.Scheme;
             NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
-            if (authProvider != null)
+            if (authProvider == null)
                 return Request.CreateResponse(HttpStatusCode.Unauthorized);
 
             //првоерка наличия прав на операцию
@@ -108,14 +111,77 @@ namespace ElJournal.Controllers
                 return Request.CreateResponse(HttpStatusCode.Forbidden);
         }
 
+
+        // добавить пользователя на указанный факультет (администратор)
+        [HttpPost]
+        [Route("api/People/{personId}/faculty/{facultyId}")]
+        public async Task<HttpResponseMessage> PostFaculty(string personId, string facultyId)
+        {
+            //идентификация пользователя
+            string token = Request?.Headers?.Authorization?.Scheme;
+            NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
+            if (authProvider == null)
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
+
+            Person person = await Person.GetInstanceAsync(personId);
+            Faculty faculty = await Faculty.GetInstanceAsync(facultyId);
+            if(person == null || faculty == null)
+                return Request.CreateResponse(HttpStatusCode.BadRequest);
+
+            //проверка наличия прав на операцию
+            bool commonRight = authProvider.CheckPermission(Permission.PERSON_COMMON_PERMISSION);
+            if (commonRight)
+            {
+                if (await person.AddOnFaculty(faculty.ID))
+                    return Request.CreateResponse(HttpStatusCode.Created);
+                else
+                    return Request.CreateResponse(HttpStatusCode.Conflict);
+            }
+            else
+                return Request.CreateResponse(HttpStatusCode.Forbidden);
+        }
+
+
+        // добавить пользователя к указанной кафедре (администратор)
+        [HttpPost]
+        [Route("api/People/{personId}/department/{departmentId}")]
+        public async Task<HttpResponseMessage> PostDepartment(string personId, string departmentId)
+        {
+            //идентификация пользователя
+            string token = Request?.Headers?.Authorization?.Scheme;
+            NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
+            if (authProvider == null)
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
+
+            Person person = await Person.GetInstanceAsync(personId);
+            Department department = await Department.GetInstanceAsync(departmentId);
+            if (person == null || department == null)
+                return Request.CreateResponse(HttpStatusCode.BadRequest);
+
+            //проверка наличия прав на операцию
+            bool commonRight = authProvider.CheckPermission(Permission.PERSON_COMMON_PERMISSION);
+            if (commonRight)
+            {
+                if (await person.AddOnDepartment(department.ID))
+                    return Request.CreateResponse(HttpStatusCode.Created);
+                else
+                    return Request.CreateResponse(HttpStatusCode.Conflict);
+            }
+            else
+                return Request.CreateResponse(HttpStatusCode.Forbidden);
+        }
+
+
         // PUT: api/Persons/5
         // изменить пользователя (администратор)
+        [HttpPut]
+        [Route("api/People/{id}")]
         public async Task<HttpResponseMessage> Put(string id, [FromBody]Person person)
         {
             //идентификация пользователя
             string token = Request?.Headers?.Authorization?.Scheme;
             NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
-            if (authProvider != null)
+            if (authProvider == null)
                 return Request.CreateResponse(HttpStatusCode.Unauthorized);
 
             //првоерка наличия прав на операцию
@@ -135,12 +201,14 @@ namespace ElJournal.Controllers
 
         // DELETE: api/Persons/5
         // удалить пользователя (администратор)
+        [HttpDelete]
+        [Route("api/People/{id}")]
         public async Task<HttpResponseMessage> Delete(string id)
         {
             //идентификация пользователя
             string token = Request?.Headers?.Authorization?.Scheme;
             NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
-            if (authProvider != null)
+            if (authProvider == null)
                 return Request.CreateResponse(HttpStatusCode.Unauthorized);
 
             //поиск указанного пользователя
@@ -152,7 +220,7 @@ namespace ElJournal.Controllers
             bool commonRight = authProvider.CheckPermission(Permission.PERSON_COMMON_PERMISSION);
             if (commonRight)
             {
-                if (await person.Update())
+                if (person.Delete())
                     return Request.CreateResponse(HttpStatusCode.OK);
                 else
                     return Request.CreateResponse(HttpStatusCode.BadRequest);
@@ -161,6 +229,65 @@ namespace ElJournal.Controllers
                 return Request.CreateResponse(HttpStatusCode.Forbidden);
         }
 
+
+        // удалить пользователя из указанного факультета (администратор)
+        [HttpDelete]
+        [Route("api/People/{personId}/faculty/{facultyId}")]
+        public async Task<HttpResponseMessage> DeleteFaculty(string personId, string facultyId)
+        {
+            //идентификация пользователя
+            string token = Request?.Headers?.Authorization?.Scheme;
+            NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
+            if (authProvider == null)
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
+
+            Person person = await Person.GetInstanceAsync(personId);
+            Faculty faculty = await Faculty.GetInstanceAsync(facultyId);
+            if (person == null || faculty == null)
+                return Request.CreateResponse(HttpStatusCode.BadRequest);
+
+            //проверка наличия прав на операцию
+            bool commonRight = authProvider.CheckPermission(Permission.PERSON_COMMON_PERMISSION);
+            if (commonRight)
+            {
+                if (await person.RemoveOnFaculty(facultyId))
+                    return Request.CreateResponse(HttpStatusCode.OK);
+                else
+                    return Request.CreateResponse(HttpStatusCode.Conflict);
+            }
+            else
+                return Request.CreateResponse(HttpStatusCode.Forbidden);
+        }
+
+
+        // удалить пользователя из указанной кафедры (администратор)
+        [HttpDelete]
+        [Route("api/People/{personId}/department/{departmentId}")]
+        public async Task<HttpResponseMessage> DeleteDepartment(string personId, string departmentId)
+        {
+            //идентификация пользователя
+            string token = Request?.Headers?.Authorization?.Scheme;
+            NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
+            if (authProvider == null)
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
+
+            Person person = await Person.GetInstanceAsync(personId);
+            Department department = await Department.GetInstanceAsync(departmentId);
+            if (person == null || department == null)
+                return Request.CreateResponse(HttpStatusCode.BadRequest);
+
+            //проверка наличия прав на операцию
+            bool commonRight = authProvider.CheckPermission(Permission.PERSON_COMMON_PERMISSION);
+            if (commonRight)
+            {
+                if (await person.RemoveOnDepartment(departmentId))
+                    return Request.CreateResponse(HttpStatusCode.OK);
+                else
+                    return Request.CreateResponse(HttpStatusCode.Conflict);
+            }
+            else
+                return Request.CreateResponse(HttpStatusCode.Forbidden);
+        }
 
 
         [HttpGet]

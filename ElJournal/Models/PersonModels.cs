@@ -217,7 +217,7 @@ namespace ElJournal.Models
             {
                 { "@surname", Surname },
                 { "@name", Name },
-                { "@patromynic", Patronymic },
+                { "@patronymic", Patronymic },
                 { "@info", Info},
                 { "@RoleID", RoleId },
                 { "@student_id", Student_id },
@@ -246,9 +246,10 @@ namespace ElJournal.Models
             string procName = "dbo.UpdatePerson";
             var parameters = new Dictionary<string, string>
             {
+                { "@ID", ID },
                 { "@surname", Surname },
                 { "@name", Name },
-                { "@patromynic", Patronymic },
+                { "@patronymic", Patronymic },
                 { "@info", Info},
                 { "@RoleID", RoleId },
                 { "@student_id", Student_id },
@@ -298,5 +299,130 @@ namespace ElJournal.Models
                 return false;
             }
         }
+
+        /// <summary>
+        /// Добавление пользователя к указанному факультету
+        /// </summary>
+        /// <param name="facultyId"></param>
+        /// <returns></returns>
+        public async Task<bool> AddOnFaculty(string facultyId)
+        {
+            //поиск факультета
+            Faculty faculty = await Faculty.GetInstanceAsync(facultyId);
+            if (faculty == null)
+                return false;
+
+            string procName = "dbo.AddPersonFaculty";
+            var parameters = new Dictionary<string, string>
+            {
+                { "@facultyId", facultyId },
+                { "@personId", ID }
+            };
+            try
+            {
+                DB db = DB.GetInstance();
+                return Convert.ToBoolean(await db.ExecStoredProcedureAsync(procName, parameters));
+            }
+            catch(Exception e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Fatal(e.ToString());//запись лога с ошибкой
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Удаление пользователя из указанного факультета
+        /// </summary>
+        /// <param name="facultyId"></param>
+        /// <returns></returns>
+        public async Task<bool> RemoveOnFaculty(string facultyId)
+        {
+            //поиск факультета
+            Faculty faculty = await Faculty.GetInstanceAsync(facultyId);
+            if (faculty == null)
+                return false;
+
+            string sqlQuery = "delete from FacultiesPersons where FacultyID=@facultyId and PersonID=@personId";
+            var parameters = new Dictionary<string, string>
+            {
+                { "@facultyId", facultyId },
+                { "@personId", ID }
+            };
+            try
+            {
+                DB db = DB.GetInstance();
+                return Convert.ToBoolean(db.ExecInsOrDelQuery(sqlQuery, parameters));
+            }
+            catch (Exception e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Fatal(e.ToString());//запись лога с ошибкой
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Добавление пользователя к указанной кафедре
+        /// </summary>
+        /// <param name="departmentId"></param>
+        /// <returns></returns>
+        public async Task<bool> AddOnDepartment(string departmentId)
+        {
+            //поиск факультета
+            Faculty faculty = await Faculty.GetInstanceAsync(departmentId);
+            if (faculty == null)
+                return false;
+
+            string procName = "dbo.AddPersonDepartment";
+            var parameters = new Dictionary<string, string>
+            {
+                { "@departmentId", departmentId },
+                { "@personId", ID }
+            };
+            try
+            {
+                DB db = DB.GetInstance();
+                return Convert.ToBoolean(await db.ExecStoredProcedureAsync(procName, parameters));
+            }
+            catch (Exception e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Fatal(e.ToString());//запись лога с ошибкой
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Удаление пользователя из указанной кафедры
+        /// </summary>
+        /// <param name="departmentId"></param>
+        /// <returns></returns>
+        public async Task<bool> RemoveOnDepartment(string departmentId)
+        {
+            //поиск факультета
+            Faculty faculty = await Faculty.GetInstanceAsync(departmentId);
+            if (faculty == null)
+                return false;
+
+            string sqlQuery = "delete from DepartmentsPerson where DepartmentID=@departmentId and PersonID=@personId";
+            var parameters = new Dictionary<string, string>
+            {
+                { "@departmentId", departmentId },
+                { "@personId", ID }
+            };
+            try
+            {
+                DB db = DB.GetInstance();
+                return Convert.ToBoolean(db.ExecInsOrDelQuery(sqlQuery, parameters));
+            }
+            catch (Exception e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Fatal(e.ToString());//запись лога с ошибкой
+                return false;
+            }
+        }
+
     }
 }
