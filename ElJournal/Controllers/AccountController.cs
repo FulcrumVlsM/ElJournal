@@ -22,7 +22,7 @@ namespace ElJournal.Controllers
 
 
         // GET: api/Account/auth/5/5
-        // проводит авторизацию, возвращает токен пользователя после ввода логина и пароля
+        // вернуть токен по логину и паролю (все)
         [HttpGet]
         [Route("api/Account/auth")]
         public async Task<dynamic> Auth([FromUri]string login=null, [FromUri]string password=null)
@@ -32,7 +32,7 @@ namespace ElJournal.Controllers
 
 
         // GET: api/Account
-        // возвращает данные определенного аккаунта
+        // вернуть данные аккаунта по ID (администратор)
         public async Task<dynamic> Get(string id)
         {
             return null;
@@ -40,8 +40,8 @@ namespace ElJournal.Controllers
 
 
         // POST: api/AccountW
-        // Создание нового аккаунта
-        public async Task<dynamic> Post([FromBody]AccountModels account)
+        // Добавить новый аккаунт (регистрация пользователя) (все)
+        public async Task<dynamic> Post([FromBody]Account account)
         {
             return null;
         }
@@ -49,7 +49,8 @@ namespace ElJournal.Controllers
 
         // PUT: api/AccountW?login=5&password=5
         // изменение пароля для указанного аккаунта
-        public async Task<dynamic> Put([FromBody]AccountModels account,
+        // Изменить логин и пароль (все рег. пользователи)
+        public async Task<dynamic> Put([FromBody]Account account,
             [FromUri]string login=null, [FromUri]string password=null)
         {
             return null;
@@ -57,8 +58,8 @@ namespace ElJournal.Controllers
 
 
         // PUT: api/AccountW/5
-        // изменение данных аккаунта (для администратора)
-        public async Task<dynamic> Put(string id, [FromBody]AccountModels account)
+        // Изменить данные аккаунта по id (администратор)
+        public async Task<dynamic> Put(string id, [FromBody]Account account)
         {
             return null;
         }

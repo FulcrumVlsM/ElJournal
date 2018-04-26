@@ -290,11 +290,21 @@ namespace ElJournal.Controllers
         }
 
 
-        [HttpGet]
+        [HttpPost]
         [Route("api/People/UpdateToken")]
-        public async Task<dynamic> UpdateToken([FromBody]AccountModels auth)
+        public async Task<dynamic> UpdateToken()
         {
-            return null;
+            //идентификация пользователя
+            string token = Request?.Headers?.Authorization?.Scheme;
+            NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
+            if (authProvider == null)
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
+
+            Person person = await Person.GetInstanceAsync(authProvider.PersonId);
+            if (await person.UpdateToken())
+                return Request.CreateResponse(HttpStatusCode.OK);
+            else
+                return Request.CreateResponse(HttpStatusCode.InternalServerError);
         }
 
 

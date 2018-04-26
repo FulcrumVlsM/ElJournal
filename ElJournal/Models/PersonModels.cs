@@ -370,8 +370,8 @@ namespace ElJournal.Models
         public async Task<bool> AddOnDepartment(string departmentId)
         {
             //поиск факультета
-            Faculty faculty = await Faculty.GetInstanceAsync(departmentId);
-            if (faculty == null)
+            Department department = await Department.GetInstanceAsync(departmentId);
+            if (department == null)
                 return false;
 
             string procName = "dbo.AddPersonDepartment";
@@ -401,8 +401,8 @@ namespace ElJournal.Models
         public async Task<bool> RemoveOnDepartment(string departmentId)
         {
             //поиск факультета
-            Faculty faculty = await Faculty.GetInstanceAsync(departmentId);
-            if (faculty == null)
+            Department department = await Department.GetInstanceAsync(departmentId);
+            if (department == null)
                 return false;
 
             string sqlQuery = "delete from DepartmentsPerson where DepartmentID=@departmentId and PersonID=@personId";
@@ -417,6 +417,31 @@ namespace ElJournal.Models
                 return Convert.ToBoolean(db.ExecInsOrDelQuery(sqlQuery, parameters));
             }
             catch (Exception e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Fatal(e.ToString());//запись лога с ошибкой
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// обновляет токен указанного пользователя
+        /// </summary>
+        /// <returns></returns>
+        public async Task<bool> UpdateToken()
+        {
+            string procName = "dbo.TokenUpdate";
+            var parameters = new Dictionary<string, string>
+            {
+                { "@personId", ID }
+            };
+            try
+            {
+                DB db = DB.GetInstance();
+                await db.ExecStoredProcedureAsync(procName, parameters);
+                return true;
+            }
+            catch(Exception e)
             {
                 Logger logger = LogManager.GetCurrentClassLogger();
                 logger.Fatal(e.ToString());//запись лога с ошибкой
