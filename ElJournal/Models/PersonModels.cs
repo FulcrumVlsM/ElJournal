@@ -22,6 +22,8 @@ namespace ElJournal.Models
         public List<Department> Departments { get; set; }
         public List<Faculty> Facuties { get; set; }
 
+        private string _token;
+
 
         /// <summary>
         /// Возвращает пользователя по id
@@ -50,7 +52,9 @@ namespace ElJournal.Models
                         Student_id = obj.ContainsKey("student_id") ? obj["student_id"].ToString() : null,
                         Passport_id = obj.ContainsKey("passport_id") ? obj["passport_id"].ToString() : null,
                         Secret = obj.ContainsKey("secret_word") ? obj["secret_word"].ToString() : null,
-                        Info = obj.ContainsKey("info") ? obj["info"].ToString() : null
+                        Info = obj.ContainsKey("info") ? obj["info"].ToString() : null,
+                        RoleId = obj.ContainsKey("RolesID") ? obj["RolesID"].ToString() : null,
+                        _token = obj.ContainsKey("token") ? obj["token"].ToString() : null
 
                     };
                     person.Facuties = await GetFacultiesOfPerson(person.ID);
@@ -75,7 +79,7 @@ namespace ElJournal.Models
         /// <returns></returns>
         public static async Task<Person> GetPublicInstanceAsync(string id)
         {
-            string sqlQuery = "select ID,name,surname,patronymic,RolesID from People where ID=@id";
+            string sqlQuery = "select ID,name,surname,patronymic,RolesID,info from People where ID=@id";
             var parameters = new Dictionary<string, string>
             {
                 { "@id", id }
@@ -92,10 +96,8 @@ namespace ElJournal.Models
                         Surname = obj.ContainsKey("surname") ? obj["surname"].ToString() : null,
                         Name = obj.ContainsKey("name") ? obj["name"].ToString() : null,
                         Patronymic = obj.ContainsKey("patronymic") ? obj["patronymic"].ToString() : null,
-                        Student_id = obj.ContainsKey("student_id") ? obj["student_id"].ToString() : null,
-                        Passport_id = obj.ContainsKey("passport_id") ? obj["passport_id"].ToString() : null,
-                        Secret = obj.ContainsKey("secret_word") ? obj["secret_word"].ToString() : null,
-                        Info = obj.ContainsKey("info") ? obj["info"].ToString() : null
+                        Info = obj.ContainsKey("info") ? obj["info"].ToString() : null,
+                        RoleId = obj.ContainsKey("RolesID") ? obj["RolesID"].ToString() : null
 
                     };
                     person.Facuties = await GetFacultiesOfPerson(person.ID);
@@ -163,7 +165,7 @@ namespace ElJournal.Models
         public static List<Person> ToPeople(List<Dictionary<string, dynamic>> personList)
         {
             if (personList.Count == 0)
-                return null;
+                return new List<Person>(0);
             else
             {
                 var departments = new List<Person>(personList.Count);
@@ -449,5 +451,13 @@ namespace ElJournal.Models
             }
         }
 
+        /// <summary>
+        /// Возвращает токен пользователя
+        /// </summary>
+        /// <returns></returns>
+        public string GetToken()
+        {
+            return _token;
+        }
     }
 }

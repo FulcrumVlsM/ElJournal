@@ -545,6 +545,6 @@ namespace ElJournal.DBInteract
         public const string GROUP_PERMISSION = "GROUP_PERMISSION";
         public const string GROUP_COMMON_PERMISSION = "GROUP_COMMON_PERMISSION";
 
-
+        public const string ACCOUNT_PERMISSION = "ACCOUNT_PERMISSION";
     }
 }

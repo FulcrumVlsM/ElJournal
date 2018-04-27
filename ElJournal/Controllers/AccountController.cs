@@ -7,6 +7,8 @@ using System.Web.Http;
 using ElJournal.Models;
 using ElJournal.Providers;
 using System.Threading.Tasks;
+using ElJournal.DBInteract;
+using System.Text.RegularExpressions;
 
 namespace ElJournal.Controllers
 {
@@ -14,62 +16,167 @@ namespace ElJournal.Controllers
     {
         // вернуть токен по логину и паролю (все)
         // вернуть данные аккаунта по ID (администратор)
+        // вернуть все аккаунту (только публичные данные)
         // Добавить новый аккаунт (регистрация пользователя) (все)
-        // Изменить логин и пароль (все рег. пользователи)
-        // Изменить данные аккаунта по id (администратор)
+        // Изменить данные своего аккаунта (все рег. пользователи)
         // Удалить аккаунт (администратор)
 
 
 
         // GET: api/Account/auth/5/5
         // вернуть токен по логину и паролю (все)
-        [HttpGet]
+        [HttpPost]
         [Route("api/Account/auth")]
-        public async Task<dynamic> Auth([FromUri]string login=null, [FromUri]string password=null)
+        public async Task<HttpResponseMessage> Auth([FromBody]LogIn data)
         {
-            return null;
+            Response response = new Response();
+            Account account = await data.Authorize();
+            if(account != null)
+            {
+                Person person = await Person.GetInstanceAsync(account.PersonID);
+                response.Data = person.GetToken();
+                return Request.CreateResponse(HttpStatusCode.OK, response);
+            }
+            else
+                return Request.CreateResponse(HttpStatusCode.BadRequest);
+        }
+
+
+        // вернуть все аккаунту (только публичные данные)
+        public async Task<HttpResponseMessage> Get([FromUri]string person = null, [FromUri]string name = null)
+        {
+            Response response = new Response();
+            var accounts = await Account.GetCollectionAsync();
+
+            if (person != null) //отбор по пользователю
+                accounts = accounts.FindAll(x => x.PersonID == person);
+
+            if (name != null) //поиск по имени
+            {
+                Regex regex = new Regex(name);
+                accounts = accounts.FindAll(x => regex.IsMatch(x.Alias));
+            }
+
+            response.Data = accounts;
+            if (accounts.Count > 0)
+                return Request.CreateResponse(HttpStatusCode.OK, response);
+            else
+                return Request.CreateResponse(HttpStatusCode.NoContent, response);
         }
 
 
         // GET: api/Account
         // вернуть данные аккаунта по ID (администратор)
-        public async Task<dynamic> Get(string id)
+        public async Task<HttpResponseMessage> Get(string id)
         {
-            return null;
+            Response response = new Response();
+            
+            //идентификация пользователя
+            string token = Request?.Headers?.Authorization?.Scheme;
+            NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
+            if (authProvider == null)
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
+
+            bool commonRight = authProvider.CheckPermission(Permission.ACCOUNT_PERMISSION);
+            if (commonRight)
+            {
+                Account account = await Account.GetInstanceAsync(id);
+                response.Data = account;
+                if (account != null)
+                    return Request.CreateResponse(HttpStatusCode.OK, response);
+                else
+                    return Request.CreateResponse(HttpStatusCode.NotFound);
+            }
+            else
+                return Request.CreateResponse(HttpStatusCode.Forbidden);
         }
 
 
         // POST: api/AccountW
         // Добавить новый аккаунт (регистрация пользователя) (все)
-        public async Task<dynamic> Post([FromBody]Account account)
+        [HttpPost]
+        [Route("api/Account")]
+        public async Task<HttpResponseMessage> Post([FromBody]NewAccount account)
         {
-            return null;
+            // поиск указанного пользователя
+            Person person = await Person.GetInstanceAsync(account?.PersonID);
+            if(person == null)
+                return Request.CreateResponse(HttpStatusCode.BadRequest);
+
+            //проверка корректности введенного секретного слова пользователя
+            if (account.Secret == person.Secret || 
+                account.Secret == person.Student_id || 
+                account.Secret == person.Passport_id)
+            {
+                if (await account.Push())
+                    return Request.CreateResponse(HttpStatusCode.Created);
+                else
+                    return Request.CreateResponse(HttpStatusCode.BadRequest);
+            }
+            else
+                return Request.CreateResponse(HttpStatusCode.BadRequest);
         }
 
 
         // PUT: api/AccountW?login=5&password=5
-        // изменение пароля для указанного аккаунта
-        // Изменить логин и пароль (все рег. пользователи)
-        public async Task<dynamic> Put([FromBody]Account account,
-            [FromUri]string login=null, [FromUri]string password=null)
+        // Изменить данные своего аккаунта (все рег. пользователи)
+        [HttpPut]
+        [Route("api/Account")]
+        public async Task<HttpResponseMessage> Put([FromBody]NewAccount account)
         {
-            return null;
-        }
+            Account realAccount = await Account.GetInstanceAsync(account?.Login, account?.Password);
+            if (realAccount == null)
+                return Request.CreateResponse(HttpStatusCode.BadRequest);
 
+            realAccount.Password = account.NewPassword;
+            realAccount.Alias = account?.Alias;
+            realAccount.Email = account?.Email;
 
-        // PUT: api/AccountW/5
-        // Изменить данные аккаунта по id (администратор)
-        public async Task<dynamic> Put(string id, [FromBody]Account account)
-        {
-            return null;
+            if (await realAccount.Update())
+                return Request.CreateResponse(HttpStatusCode.OK);
+            else
+                return Request.CreateResponse(HttpStatusCode.BadRequest);
         }
 
 
         // DELETE: api/AccountW/5
         // удалить аккаунт (администратор)
-        public dynamic Delete(string id)
+        [HttpDelete]
+        [Route("api/Account/{id}")]
+        public async Task<HttpResponseMessage> Delete(string id)
         {
-            return null;
+            //идентификация пользователя
+            string token = Request?.Headers?.Authorization?.Scheme;
+            NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
+            if (authProvider == null)
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
+
+            Account account = await Account.GetInstanceAsync(id);
+            if (account == null)
+                return Request.CreateResponse(HttpStatusCode.BadRequest);
+
+            bool commonRight = authProvider.CheckPermission(Permission.ACCOUNT_PERMISSION);
+            if (commonRight)
+            {
+                if(account.Delete())
+                    return Request.CreateResponse(HttpStatusCode.OK);
+                else
+                    return Request.CreateResponse(HttpStatusCode.Conflict);
+            }
+            else
+                return Request.CreateResponse(HttpStatusCode.Forbidden);
+        }
+
+
+        // восстановление пароля (через почту)
+        //TODO: метод еще не готов
+        [HttpPost]
+        [Route("api/Account/restore")]
+        public async Task<HttpResponseMessage> Restore(Account account)
+        {
+            // TODO: отправка письма на указанный email. Генерируется новый пароль.
+            // для запроса будет необходим id пользователя и email
+            return Request.CreateResponse(HttpStatusCode.NotFound);
         }
     }
 }
