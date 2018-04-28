@@ -250,6 +250,7 @@
     <Compile Include="Models\SubjectModels.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Providers\ApplicationOAuthProvider.cs" />
+    <Compile Include="Providers\MailReceiver.cs" />
     <Compile Include="Providers\NativeAuthProvider.cs" />
     <Compile Include="Results\ChallengeResult.cs" />
     <Compile Include="Startup.cs" />

@@ -9,6 +9,9 @@ using ElJournal.Providers;
 using System.Threading.Tasks;
 using ElJournal.DBInteract;
 using System.Text.RegularExpressions;
+using System.Net.Mail;
+using System.Web;
+using System.Configuration;
 
 namespace ElJournal.Controllers
 {
@@ -174,9 +177,27 @@ namespace ElJournal.Controllers
         [Route("api/Account/restore")]
         public async Task<HttpResponseMessage> Restore(Account account)
         {
-            // TODO: отправка письма на указанный email. Генерируется новый пароль.
-            // для запроса будет необходим id пользователя и email
-            return Request.CreateResponse(HttpStatusCode.NotFound);
+            string email = ConfigurationManager.AppSettings["email"];
+            string emailPassword = ConfigurationManager.AppSettings["emailPassword"];
+
+            //TODO: тело должно быть в виде html, отдельным файлом. 
+
+            MailReceiver receiver = new MailReceiver
+            {
+                From = email,
+                To = account?.Email,
+                Title = "Изменение пароля",
+                Body = "Вы забыли свой пароль. " +
+                       "Ваш новый пароль: {0}.",
+                SmtpAdress = "smtp.gmail.com",
+                Port = 587,
+                EmailPassword = emailPassword,
+                EnableSsl = true
+            };
+            if (await receiver.Receive())
+                return Request.CreateResponse(HttpStatusCode.OK);
+            else
+                return Request.CreateResponse(HttpStatusCode.BadRequest);
         }
     }
 }
