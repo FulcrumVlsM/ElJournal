@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using System.Data.SqlClient;
 using ElJournal.Models;
+using ElJournal.Providers;
 
 namespace ElJournal.Controllers
 {
@@ -17,159 +18,103 @@ namespace ElJournal.Controllers
     {
         // GET: api/Departments
         //TODO: результат запроса должен записываться в Response.Data, а не возвращаться напрямую
-        public async Task<dynamic> Get()
+        public async Task<HttpResponseMessage> Get()
         {
-            //формат ответа
             Response response = new Response();
-            try
-            {
-                DB db = DB.GetInstance();
-                response.Succesful = true;
-                return await db.ExecSelectQueryAsync("select * from Departments");
-            }
-            catch (Exception e)
-            {
-                response.Error = e.ToString();
-                response.message = e.Message;
-            }
-            return response;
+            var departments = await Department.GetCollectionAsync();
+            response.Data = departments;
+            if (departments.Count > 0)
+                return Request.CreateResponse(HttpStatusCode.OK, response);
+            else
+                return Request.CreateResponse(HttpStatusCode.NoContent, response);
         }
             
 
         // GET: api/Departments/5
-        public async Task<dynamic> Get(string id)
+        public async Task<HttpResponseMessage> Get(string id)
         {
             Response response = new Response();
-            try
-            {
-                DB db = DB.GetInstance();
-                Dictionary<string, string> parameters = new Dictionary<string, string>();
-                parameters.Add("@id", id);
-                response.Succesful = true;
-                response.Data = await db.ExecSelectQueryAsync("select * from Departments", parameters);
-            }
-            catch (Exception e)
-            {
-                response.Error = e.ToString();
-                response.message = e.Message;
-            }
-            return response;
+            Department department = await Department.GetInstanceAsync(id);
+            response.Data = department;
+            if(department!=null)
+                return Request.CreateResponse(HttpStatusCode.OK, response);
+            else
+                return Request.CreateResponse(HttpStatusCode.NotFound);
         }
+
 
         //TODO: при добавлении кафедры нужно сделать, чтобы в ответе был id этой добавленной записи
         // POST: api/Departments
-        public async Task<dynamic> Post([FromBody]Department department)
+        public async Task<HttpResponseMessage> Post([FromBody]Department department)
         {
-            Response response = new Response(); //формат ответа
-            string sqlQuery = "insert into Departments(managerPersonID,name,description) " +
-                        "values(@managerPersonID,@name,@description)";
-            
-            try
+            //идентификация пользователя
+            string token = Request?.Headers?.Authorization?.Scheme; //токен пользователя
+            NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
+            if (authProvider == null)
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
+
+            //проверка прав на операцию
+            bool commonRight = authProvider.CheckPermission(Permission.DEPARTMENT_COMMON_PERMISSION);
+
+            if (commonRight)
             {
-                DB db = DB.GetInstance();
-                //TODO: было переименование значений в БД. Я их приводил в более стандартный вид И текст разрешений лучше
-                // выносить в статическое поле класса или константу.
-                bool right = await db.CheckPermission(department.authorId, "DEPARTMENT_ALL_PERMISSION");
-
-                if (right) //если у пользователя есть права на операцию
-                {
-                    //необходимые параметры запроса
-                    Dictionary<string, string> parameters = new Dictionary<string, string>();
-                    parameters.Add("@managerPersonID", department.managerPersonID);
-                    parameters.Add("@name", department.name);
-                    parameters.Add("@description", department.description);
-
-                    //выполнение запроса
-                    int res = db.ExecInsOrDelQuery(sqlQuery, parameters);
-                    if (res != 0)
-                    {
-                        response.Succesful = true;
-                        response.message = "New department was added";
-                    }
-                    else
-                        response.message = "Department not added";
-                }
+                if(await department.Push())
+                    return Request.CreateResponse(HttpStatusCode.Created);
                 else
-                    response.Error = ErrorMessage.PERMISSION_ERROR;
+                    return Request.CreateResponse(HttpStatusCode.Conflict);
             }
-            catch (Exception e)
-            {
-                response.Error = e.ToString();
-                response.message = e.Message;
-            }
-
-            return response;
+            return Request.CreateResponse(HttpStatusCode.Forbidden);
         }
+
 
         // PUT: api/Departments/5
-        public async Task<dynamic> Put(string id, [FromBody]Department department)
+        public async Task<HttpResponseMessage> Put(string id, [FromBody]Department department)
         {
-            Response response = new Response(); //формат результата запроса
-            string sqlQuery = "dbo.UpdateDepartment";
+            //идентификация пользователя
+            string token = Request?.Headers?.Authorization?.Scheme; //токен пользователя
+            NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
+            if (authProvider == null)
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
 
-            try
+            //проверка прав на операцию
+            bool commonRight = authProvider.CheckPermission(Permission.DEPARTMENT_COMMON_PERMISSION);
+
+            if (commonRight)
             {
-                DB db = DB.GetInstance();
-                bool right = await db.CheckPermission(department.authorId, "DEPARTMENT_ALL_PERMISSION");
-                if (right)
-                {
-                    //выполнение операции
-                    Dictionary<string, string> parameters = new Dictionary<string, string>();
-                    parameters.Add("@ID", id);
-                    parameters.Add("@managerPersonID", department.managerPersonID);
-                    parameters.Add("@name", department.name);
-                    parameters.Add("@description", department.description);
-                    int res = db.ExecStoredProcedure(sqlQuery, parameters);
-                    if (res == 0)
-                        response.Succesful = true;
-                    else
-                        response.message = "Operation was false";
-                }
+                department.ID = id;
+                if (await department.Update())
+                    return Request.CreateResponse(HttpStatusCode.OK);
                 else
-                    response.Error = ErrorMessage.PERMISSION_ERROR;
+                    return Request.CreateResponse(HttpStatusCode.BadRequest);
             }
-            catch (Exception e)
-            {
-                response.Error = e.ToString();
-                response.message = e.Message;
-            }
-
-            return response;
+            return Request.CreateResponse(HttpStatusCode.Forbidden);
         }
 
+
         // DELETE: api/Departments/5
-        public async Task<dynamic> Delete(string id, [FromBody]Department department)
+        public async Task<HttpResponseMessage> Delete(string id)
         {
-            Response response = new Response(); //формат ответа
-            string sqlQuery = "delete from Departments where ID=@ID";
+            //идентификация пользователя
+            string token = Request?.Headers?.Authorization?.Scheme; //токен пользователя
+            NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
+            if (authProvider == null)
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
 
-            try
+            Department department = await Department.GetInstanceAsync(id);
+            if(department == null)
+                return Request.CreateResponse(HttpStatusCode.BadRequest);
+
+            //проверка прав на операцию
+            bool commonRight = authProvider.CheckPermission(Permission.DEPARTMENT_COMMON_PERMISSION);
+
+            if (commonRight)
             {
-                DB db = DB.GetInstance();
-                bool right = await db.CheckPermission(department.authorId, "DEPARTMENT_ALL_PERMISSION");
-                if (right)
-                {
-                    Dictionary<string, string> parameters = new Dictionary<string, string>();
-                    parameters.Add("@ID", id);
-                    int result = db.ExecInsOrDelQuery(sqlQuery, parameters);
-                    if (result == 1)
-                    {
-                        response.Succesful = true;
-                        response.message = String.Format("Department was deleted");
-                    }
-                    else
-                        response.message = "Operation was failed";
-                }
+                if (department.Delete())
+                    return Request.CreateResponse(HttpStatusCode.OK);
                 else
-                    response.Error = ErrorMessage.PERMISSION_ERROR;
+                    return Request.CreateResponse(HttpStatusCode.Conflict);
             }
-            catch (Exception e)
-            {
-                response.Error = e.ToString();
-                response.message = e.Message;
-            }
-
-            return response;
+            return Request.CreateResponse(HttpStatusCode.Forbidden);
         }
     }
 }

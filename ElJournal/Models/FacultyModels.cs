@@ -61,10 +61,10 @@ namespace ElJournal.Models
                 return null;
             else
             {
-                var flows = new List<Faculty>(facultyList.Count);
+                var faculties = new List<Faculty>(facultyList.Count);
                 foreach (var obj in facultyList)
                 {
-                    flows.Add(new Faculty
+                    faculties.Add(new Faculty
                     {
                         ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : null,
                         Name = obj.ContainsKey("name") ? obj["name"].ToString() : null,
@@ -72,7 +72,7 @@ namespace ElJournal.Models
                         Info = obj.ContainsKey("info") ? obj["info"].ToString() : null
                     });
                 }
-                return flows;
+                return faculties;
             }
         }
 
@@ -83,10 +83,19 @@ namespace ElJournal.Models
         public static async Task<List<Faculty>> GetCollectionAsync()
         {
             string sqlQuery = "select ID,name from Faculties";
-            DB db = DB.GetInstance();
-            var result = await db.ExecSelectQueryAsync(sqlQuery);
-            var flows = ToFaculties(result);
-            return flows;
+            try
+            {
+                DB db = DB.GetInstance();
+                var result = await db.ExecSelectQueryAsync(sqlQuery);
+                var faculties = ToFaculties(result);
+                return faculties;
+            }
+            catch(Exception e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Fatal(e.ToString());//запись лога с ошибкой
+                return new List<Faculty>();
+            }
         }
 
         /// <summary>

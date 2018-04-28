@@ -529,6 +529,12 @@ namespace ElJournal.DBInteract
         public const string FACULTY_PERMISSION = "FACULTY_PERMISSION";
         public const string FACULTY_COMMON_PERMISSION = "FACULTY_COMMON_PERMISSION";
 
+        public const string DEPARTMENT_COMMON_PERMISSION = "DEPARTMENT_COMMON_PERMISSION";
+        public const string DEPARTMENT_PERMISSION = "DEPARTMENT_PERMISSION";
+
+        public const string EVENT_PERMISSION = "EVENT_PERMISSION";
+        public const string EVENT_COMMON_PERMISSION = "EVENT_COMMON_PERMISSION";
+
         public const string STUDENT_COMMON_PERMISSION = "STUDENT_COMMON_PERMISSION";
         public const string STUDENT_PERMISSION = "STUDENT_PERMISSION";
 
@@ -542,6 +548,6 @@ namespace ElJournal.DBInteract
         public const string GROUP_PERMISSION = "GROUP_PERMISSION";
         public const string GROUP_COMMON_PERMISSION = "GROUP_COMMON_PERMISSION";
 
-
+        public const string ACCOUNT_PERMISSION = "ACCOUNT_PERMISSION";
     }
 }

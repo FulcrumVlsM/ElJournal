@@ -189,6 +189,8 @@ namespace ElJournal.Models
         public string ID { get; set; }
         public string FlowId { get; set; }
         public string TeacherId { get; set; }
+        public string Teacher2Id { get; set; }
+        public string Teacher3Id { get; set; }
         public string SubjectId { get; set; }
         public string SemesterId { get; set; }
 
@@ -214,9 +216,11 @@ namespace ElJournal.Models
                     {
                         ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : null,
                         FlowId = obj.ContainsKey("FlowID") ? obj["FlowID"].ToString() : null,
-                        TeacherId = obj.ContainsKey("TeacherID") ? obj["TeacherID"] : null,
-                        SubjectId = obj.ContainsKey("SubjectID") ? obj["SubjectID"] : null,
-                        SemesterId = obj.ContainsKey("SemesterID") ? obj["SemesterID"] : null
+                        TeacherId = obj.ContainsKey("TeacherID") ? obj["TeacherID"].ToString() : null,
+                        SubjectId = obj.ContainsKey("SubjectID") ? obj["SubjectID"].ToString() : null,
+                        SemesterId = obj.ContainsKey("SemesterID") ? obj["SemesterID"].ToString() : null,
+                        Teacher2Id = obj.ContainsKey("Teacher2ID") ? obj["Teacher2ID"].ToString() : null,
+                        Teacher3Id = obj.ContainsKey("Teacher3ID") ? obj["Teacher3ID"].ToString() : null
                     };
                 else
                     return null;
@@ -240,19 +244,7 @@ namespace ElJournal.Models
             {
                 DB db = DB.GetInstance();
                 var result = await db.ExecSelectQueryAsync(sqlQuery);
-                var subjects = new List<FlowSubject>(result.Count);
-                foreach (var obj in result)
-                {
-                    subjects.Add(new FlowSubject
-                    {
-                        ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : null,
-                        FlowId = obj.ContainsKey("FlowID") ? obj["FlowID"].ToString() : null,
-                        TeacherId = obj.ContainsKey("TeacherID") ? obj["TeacherID"] : null,
-                        SubjectId = obj.ContainsKey("SubjectID") ? obj["SubjectID"] : null,
-                        SemesterId = obj.ContainsKey("SemesterID") ? obj["SemesterID"] : null
-                    });
-                }
-
+                var subjects = ToSubjects(result);
                 return subjects;
             }
             catch(Exception e)
@@ -281,9 +273,11 @@ namespace ElJournal.Models
                     {
                         ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : null,
                         FlowId = obj.ContainsKey("FlowID") ? obj["FlowID"].ToString() : null,
-                        TeacherId = obj.ContainsKey("TeacherID") ? obj["TeacherID"] : null,
-                        SubjectId = obj.ContainsKey("SubjectID") ? obj["SubjectID"] : null,
-                        SemesterId = obj.ContainsKey("SemesterID") ? obj["SemesterID"] : null
+                        TeacherId = obj.ContainsKey("TeacherID") ? obj["TeacherID"].ToString() : null,
+                        SubjectId = obj.ContainsKey("SubjectID") ? obj["SubjectID"].ToString() : null,
+                        SemesterId = obj.ContainsKey("SemesterID") ? obj["SemesterID"].ToString() : null,
+                        Teacher2Id = obj.ContainsKey("Teacher2ID") ? obj["Teacher2ID"].ToString() : null,
+                        Teacher3Id = obj.ContainsKey("Teacher3ID") ? obj["Teacher3ID"].ToString() : null
                     });
                 }
                 return subjects;
@@ -302,7 +296,9 @@ namespace ElJournal.Models
                 {"@flowId", FlowId },
                 {"@teacherId", TeacherId },
                 {"@subjectId", SubjectId },
-                {"@semesterId", SemesterId }
+                {"@semesterId", SemesterId },
+                {"@teacher2Id", Teacher2Id },
+                {"@teacher3Id", Teacher3Id }
             };
             try
             {
