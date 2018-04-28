@@ -54,7 +54,7 @@ namespace ElJournal.Models
                         Title = obj.ContainsKey("title") ? obj["title"].ToString() : null,
                         Info = obj.ContainsKey("info") ? obj["info"].ToString() : null,
                         AuthorID = obj.ContainsKey("authorPersonID") ? obj["authorPersonID"].ToString() : null,
-                        Opened = obj.ContainsKey("public") ? obj["public"].ToString() : null
+                        Opened = obj.ContainsKey("public") ? Convert.ToBoolean(obj["public"].ToString()) : null
                     };
                 else
                     return null;
@@ -95,7 +95,7 @@ namespace ElJournal.Models
                         Title = obj.ContainsKey("title") ? obj["title"].ToString() : null,
                         Info = obj.ContainsKey("info") ? obj["info"].ToString() : null,
                         AuthorID = obj.ContainsKey("authorPersonID") ? obj["authorPersonID"].ToString() : null,
-                        Opened = obj.ContainsKey("public") ? obj["public"].ToString() : null
+                        Opened = obj.ContainsKey("public") ? Convert.ToBoolean(obj["public"].ToString()) : null
                     });
                 }
                 return faculties;
@@ -109,8 +109,7 @@ namespace ElJournal.Models
         public static async Task<List<Alert>> GetCollectionAsync(DateTime start, DateTime end)
         {
             string sqlQuery = "select ID,EventTypeID,FacultyID," +
-                "[DepartmentID],[FlowSubjectID],[authorPersonID],[createDate],[eventDate],[title],[public] from Events" +
-                "where createDate>=@start and createDate<=@end";
+                "[DepartmentID],[FlowSubjectID],[authorPersonID],[createDate],[eventDate],[title],[public] from dbo.GetEvents(@start,@end)";
             var parameters = new Dictionary<string, string>
             {
                 { "@start", start.ToShortDateString() },

@@ -145,7 +145,7 @@ namespace ElJournal.Controllers
             if (commonRight || departRight)
             {
                 if (await flowSubject.Push())
-                    return Request.CreateResponse(HttpStatusCode.OK);
+                    return Request.CreateResponse(HttpStatusCode.Created);
                 else
                     return Request.CreateResponse(HttpStatusCode.BadRequest);
             }
