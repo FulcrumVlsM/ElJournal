@@ -5,6 +5,10 @@ using System.Threading.Tasks;
 using System.Web;
 using ElJournal.DBInteract;
 using NLog;
+using System.IO;
+using System.Data.SqlClient;
+using System.Configuration;
+using Newtonsoft.Json;
 
 namespace ElJournal.Models
 {
@@ -12,9 +16,12 @@ namespace ElJournal.Models
     {
         public string ID { get; set; }
         public string Name { get; set; }
+        [JsonIgnore]
         public string FileName { get; set; }
+        [JsonIgnore]
         public string FileURL { get; set; }
         public string Advanced { get; set; }
+        public string AuthorId { get; set; }
 
 
         /// <summary>
@@ -39,8 +46,9 @@ namespace ElJournal.Models
                         ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : null,
                         Name = obj.ContainsKey("name") ? obj["name"].ToString() : null,
                         FileName = obj.ContainsKey("fileName") ? obj["fileName"].ToString() : null,
-                        FileURL = obj.ContainsKey("ID") ? obj["fileURL"].ToString() : null,
-                        Advanced = obj["advanced"].ToString()
+                        FileURL = obj.ContainsKey("fileURL") ? obj["fileURL"].ToString() : null,
+                        Advanced = obj.ContainsKey("advanced") ? obj["advanced"].ToString() : null,
+                        AuthorId = obj.ContainsKey("authorID") ? obj["authorID"] : null
                     };
                 else
                     return null;
@@ -60,7 +68,7 @@ namespace ElJournal.Models
         /// <returns></returns>
         public static async Task<LabWork> GetLightInstanceAsync(string id)
         {
-            string sqlQuery = "select * from LabWorks where ID=@id";
+            string sqlQuery = "select ID,name from LabWorks where ID=@id";
             var parameters = new Dictionary<string, string>
             {
                 { "@id", id }
@@ -124,7 +132,8 @@ namespace ElJournal.Models
                     Name = obj.ContainsKey("name") ? obj["name"].ToString() : null,
                     FileName = obj.ContainsKey("fileName") ? obj["fileName"].ToString() : null,
                     FileURL = obj.ContainsKey("fileURL") ? obj["fileURL"].ToString() : null,
-                    Advanced = obj.ContainsKey("advanced") ? obj["advanced"].ToString() : null
+                    Advanced = obj.ContainsKey("advanced") ? obj["advanced"].ToString() : null,
+                    AuthorId = obj.ContainsKey("authorID") ? obj["authorID"].ToString() : null
                 });
             }
 
@@ -138,28 +147,93 @@ namespace ElJournal.Models
         /// <returns>True, если объект был добавлен в БД</returns>
         public async Task<bool> Push(string authorId)
         {
-            var parameters = new Dictionary<string, string>();
             string procName = "dbo.AddLabWork";
-            parameters.Add("@name", Name);
-            parameters.Add("@advanced", Advanced);
-            parameters.Add("@authorId", authorId);
-            DB db = DB.GetInstance();
-            return Convert.ToBoolean(await db.ExecStoredProcedureAsync(procName, parameters));
+            var parameters = new Dictionary<string, string>
+            {
+                { "@name", Name },
+                { "@advanced", Advanced },
+                { "@authorId", authorId }
+            };
+            try
+            {
+                DB db = DB.GetInstance();
+                return Convert.ToBoolean(await db.ExecStoredProcedureAsync(procName, parameters));
+            }
+            catch(Exception e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Fatal(e.ToString());
+                return false;
+            }
         }
 
         /// <summary>
         /// Сохраняет указанное имя и URL файла как присоединенный файл
         /// </summary>
         /// <returns></returns>
-        public async Task<bool> AttachFile()
+        public async Task<bool> AttachFile(byte[] fileArray)
         {
-            string sqlQuery = "dbo.UpdateLabWork";
-            var parameters = new Dictionary<string, string>();
-            DB db = DB.GetInstance();
-            parameters.Add("@ID", ID);
-            parameters.Add("@fileName", FileName);
-            parameters.Add("@fileURL", FileURL);
-            return Convert.ToBoolean(await db.ExecStoredProcedureAsync(sqlQuery, parameters));
+            if (string.IsNullOrWhiteSpace(FileURL) || string.IsNullOrWhiteSpace(FileName))
+                return false;
+
+            try
+            {
+                FileURL = ConfigurationManager.AppSettings["FileStorage"];
+                using (FileStream fs = new FileStream(FileURL + FileName, FileMode.CreateNew))
+                {
+                    await fs.WriteAsync(fileArray, 0, fileArray.Length);
+                }
+
+                string sqlQuery = "dbo.UpdateLabWork";
+                var parameters = new Dictionary<string, string>();
+                DB db = DB.GetInstance();
+                parameters.Add("@ID", ID);
+                parameters.Add("@fileName", FileName);
+                parameters.Add("@fileURL", FileURL);
+                return Convert.ToBoolean(await db.ExecStoredProcedureAsync(sqlQuery, parameters));
+            }
+            catch (IOException)// если файл с таким именем есть на сервере, возникнет конфликт
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Warn(string.Format("Конфликт имени файла при добавлении на сервер. {0}", FileName)); //запись лога с ошибкой
+                return false;
+            }
+            catch(SqlException e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Fatal(e.ToString());
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// удаляет запись о присоединенном файле
+        /// </summary>
+        /// <returns></returns>
+        public async Task<bool> DetachFile()
+        {
+            if (string.IsNullOrWhiteSpace(FileURL) || string.IsNullOrWhiteSpace(FileName))
+                return false;
+
+            string path = FileURL;
+            string name = FileName;
+            FileURL = string.Empty;
+            FileName = string.Empty;
+
+            try
+            {
+                File.Delete(path + name);
+                if (await Update())
+                    return true;
+                else
+                    throw new FileNotFoundException("Не удалось обновить в БД, что файл был удален", name);
+            }
+            catch(Exception e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Warn(e.ToString());
+                return false;
+            }
         }
 
         /// <summary>
