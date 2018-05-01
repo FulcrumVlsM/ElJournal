@@ -117,6 +117,33 @@ namespace ElJournal.Models
         }
 
         /// <summary>
+        /// Возвращает полный список лабораторных работ
+        /// </summary>
+        /// <param name="authorId">id автора</param>
+        /// <returns></returns>
+        public static async Task<List<LabWork>> GetCollectionAsync(string authorId)
+        {
+            try
+            {
+                string sqlQuery = "select ID,name,authorID from dbo.GetLabWorksOfTheAuthor(@authorId)";
+                var parameters = new Dictionary<string, string>
+                {
+                    { "@authorId", authorId }
+                };
+                DB db = DB.GetInstance();
+                var result = await db.ExecSelectQueryAsync(sqlQuery, parameters);
+                var labWorks = ToLabWork(result);
+                return labWorks;
+            }
+            catch (Exception e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Fatal(e.ToString());
+                return null;
+            }
+        }
+
+        /// <summary>
         /// Пребразует коллекцию словарей в коллекцию моделей
         /// </summary>
         /// <param name="works"></param>
@@ -145,7 +172,7 @@ namespace ElJournal.Models
         /// </summary>
         /// <param name="authorId">автор</param>
         /// <returns>True, если объект был добавлен в БД</returns>
-        public async Task<bool> Push(string authorId)
+        public virtual async Task<bool> Push(string authorId)
         {
             string procName = "dbo.AddLabWork";
             var parameters = new Dictionary<string, string>
@@ -171,7 +198,7 @@ namespace ElJournal.Models
         /// Сохраняет указанное имя и URL файла как присоединенный файл
         /// </summary>
         /// <returns></returns>
-        public async Task<bool> AttachFile(byte[] fileArray)
+        public virtual async Task<bool> AttachFile(byte[] fileArray)
         {
             if (string.IsNullOrWhiteSpace(FileURL) || string.IsNullOrWhiteSpace(FileName))
                 return false;
@@ -210,7 +237,7 @@ namespace ElJournal.Models
         /// удаляет запись о присоединенном файле
         /// </summary>
         /// <returns></returns>
-        public async Task<bool> DetachFile()
+        public virtual async Task<bool> DetachFile()
         {
             if (string.IsNullOrWhiteSpace(FileURL) || string.IsNullOrWhiteSpace(FileName))
                 return false;
@@ -240,7 +267,7 @@ namespace ElJournal.Models
         /// Обновляет в БД выбранный объект (по ID)
         /// </summary>
         /// <returns></returns>
-        public async Task<bool> Update()
+        public virtual async Task<bool> Update()
         {
             string procName = "dbo.UpdateLabWork";
             var parameters = new Dictionary<string, string>
@@ -266,12 +293,12 @@ namespace ElJournal.Models
         /// Удаление текущего объекта из БД
         /// </summary>
         /// <returns></returns>
-        public bool Delete()
+        public virtual bool Delete()
         {
-            string sqlQuery = "delete from LabWorks where ID=@ID";
+            string sqlQuery = "dbo.DeleteLabWork";
             var parameters = new Dictionary<string, string>
             {
-                { "@ID", ID }
+                { "@id", ID }
             };
             try
             {
@@ -527,11 +554,38 @@ namespace ElJournal.Models
         }
 
         /// <summary>
+        /// Возвращает полный список лабораторных работ в планах по всем предметам
+        /// </summary>
+        /// <param name="studentFlowId">id студента в потоке</param>
+        /// <returns></returns>
+        public static async Task<List<ExecutedLabWork>> GetCollectionAsync(string studentFlowId)
+        {
+            try
+            {
+                string sqlQuery = "select * from LabWorksExecution where StudentFlowSemesterID=@studentId";
+                var parameters = new Dictionary<string, string>
+                {
+                    { "@studentId", studentFlowId }
+                };
+                DB db = DB.GetInstance();
+                var result = await db.ExecSelectQueryAsync(sqlQuery);
+                var labWorks = ToLabWork(result);
+                return labWorks;
+            }
+            catch (Exception e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Fatal(e.ToString());
+                return null;
+            }
+        }
+
+        /// <summary>
         /// Сохраняет текущий объект LabWorkExecution в БД
         /// </summary>
         /// <param name="authorId">автор</param>
         /// <returns>True, если объект был добавлен в БД</returns>
-        public async Task<bool> Push()
+        public virtual async Task<bool> Push()
         {
             string procName = "dbo.AddLabWorkExecution";
             var parameters = new Dictionary<string, string>
@@ -557,7 +611,7 @@ namespace ElJournal.Models
         /// Удаление текущего объекта из БД
         /// </summary>
         /// <returns></returns>
-        public bool Delete()
+        public virtual bool Delete()
         {
             string sqlQuery = "delete from LabWorksExecution where ID=@ID";
             var parameters = new Dictionary<string, string>

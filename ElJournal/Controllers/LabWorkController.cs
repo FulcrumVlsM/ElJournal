@@ -20,7 +20,7 @@ namespace ElJournal.Controllers
     //develop: Mikhail
     public class LabWorkController : ApiController
     {
-        // получить весь список лабораторных (администратор, администратор кафедры, администратор факультета)
+        // получить весь список лабораторных (все рег. пользователи)
         // получить конкретную лабораторную по id (все)
         // получить файл, прикрепленный к лаб работе (все рег. пользователи)
         // получить список моих лабораторных работ (все рег. пользователи)
@@ -81,8 +81,7 @@ namespace ElJournal.Controllers
             if(authProvider == null)
                 return Request.CreateResponse(HttpStatusCode.Unauthorized);
 
-            var works = await LabWork.GetCollectionAsync();
-            works = works.FindAll(x => x.AuthorId == authProvider.PersonId);
+            var works = await LabWork.GetCollectionAsync(authProvider.PersonId);
             response.Data = works;
 
             if(works.Count>0)
@@ -126,11 +125,11 @@ namespace ElJournal.Controllers
             if(fSubject == null)
                 return Request.CreateResponse(HttpStatusCode.BadRequest);
 
-            var exLabs = await ExecutedLabWork.GetCollectionAsync();
+            var exLabs = await ExecutedLabWork.GetCollectionAsync(studentFlowId);
             exLabs = exLabs.FindAll(x =>
             {
                 LabWorkPlan plan = (LabWorkPlan.GetInstanceAsync(x.PlanId)).Result;
-                return (plan.FlowSubjectId == subjectFlowId) && (x.StudentFlowSubjectId == studentFlowId);
+                return plan.FlowSubjectId == fSubject.ID;
             });
 
             response.Data = exLabs;
@@ -251,7 +250,7 @@ namespace ElJournal.Controllers
         // POST: api/LabWork/exec/5/5?state=true
         // установить лаб работу из плана как выполненную студентом (преподаватель, администратор)
         [HttpPost]
-        [Route("api/LabWork/exec/{studentId}/{workId}/{subjectGroupId}")]
+        [Route("api/LabWork/exec")]
         public async Task<HttpResponseMessage> PostExec([FromBody]ExecutedLabWork exLab)
         {
             //идентификация пользователя
