@@ -14,6 +14,7 @@ namespace ElJournal.Models
         public string DepartmentID { get; set; }
         public string Name { get; set; }
         public string Info { get; set; }
+        public string Cypher { get; set; }
 
         /// <summary>
         /// Возвращает предмет по id
@@ -37,7 +38,8 @@ namespace ElJournal.Models
                         ID = result.ContainsKey("ID") ? result["ID"].ToString() : null,
                         Name = result.ContainsKey("name") ? result["name"].ToString() : null,
                         DepartmentID = result.ContainsKey("DepartmentID") ? result["DepartmentID"].ToString() : null,
-                        Info = result.ContainsKey("info") ? result["info"].ToString() : null
+                        Info = result.ContainsKey("info") ? result["info"].ToString() : null,
+                        Cypher = result.ContainsKey("cypher") ? result["cypher"].ToString() : null
                     };
                 else
                     return null;

@@ -247,6 +247,8 @@
     <Compile Include="Models\FacultyModels.cs" />
     <Compile Include="Models\PracticeWorkModels.cs" />
     <Compile Include="Models\Response.cs" />
+    <Compile Include="Models\RightModels.cs" />
+    <Compile Include="Models\RoleModels.cs" />
     <Compile Include="Models\SemesterModels.cs" />
     <Compile Include="Models\StudentModels.cs" />
     <Compile Include="Models\SubjectModels.cs" />

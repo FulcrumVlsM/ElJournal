@@ -328,6 +328,7 @@ namespace ElJournal.Models
         public string ID { get; set; }
         public virtual LabWork Work { get; set; }
         public string FlowSubjectId { get; set; }
+        public DateTime? EndDate { get; set; }
 
         /// <summary>
         /// Возвращает лабораторную работу в плане по указанному ID

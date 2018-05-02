@@ -306,37 +306,5 @@ namespace ElJournal.Controllers
             else
                 return Request.CreateResponse(HttpStatusCode.InternalServerError);
         }
-
-
-        private void clearHistory()
-        {
-            foreach (var obj in _clientsHistory)
-            {
-                if (DateTime.Compare(obj.Value, DateTime.Now.AddHours(-1)) < 0)
-                {
-                    _clientsHistory.Remove(obj.Key);
-                }
-
-            }
-        }
-        private bool findLast(RespPerson response, string clientIP)
-        {
-            DateTime last = default(DateTime);//время предыдущего запроса
-            try
-            {
-                last = _clientsHistory[clientIP];
-                if (DateTime.Compare(last, DateTime.Now.AddMinutes(_timeOut)) < 0)//если не прошло время ожидания запроса
-                {
-                    response.NextRequestTo = last.ToUniversalTime();
-                    response.Error = ErrorMessage.WAIT_YOUR_TIME;
-                    return false;
-                }
-            }
-            catch (KeyNotFoundException)
-            {
-                _clientsHistory.Add(clientIP, DateTime.Now);
-            }
-            return true;
-        }
     }
 }
