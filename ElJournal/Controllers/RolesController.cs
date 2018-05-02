@@ -1,39 +1,28 @@
-﻿using System;
+﻿using ElJournal.Models;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Threading.Tasks;
 using System.Web.Http;
 
 namespace ElJournal.Controllers
 {
+    //вернуть список ролей
+
     public class RolesController : ApiController
     {
         // GET: api/Roles
-        public IEnumerable<string> Get()
+        public async Task<HttpResponseMessage> Get()
         {
-            return new string[] { "value1", "value2" };
-        }
-
-        // GET: api/Roles/5
-        public string Get(int id)
-        {
-            return "value";
-        }
-
-        // POST: api/Roles
-        public void Post([FromBody]string value)
-        {
-        }
-
-        // PUT: api/Roles/5
-        public void Put(int id, [FromBody]string value)
-        {
-        }
-
-        // DELETE: api/Roles/5
-        public void Delete(int id)
-        {
+            Response response = new Response();
+            var roles = await Role.GetCollectionAsync();
+            response.Data = roles;
+            if (roles.Count > 0)
+                return Request.CreateResponse(HttpStatusCode.OK, response);
+            else
+                return Request.CreateResponse(HttpStatusCode.NoContent, response);
         }
     }
 }

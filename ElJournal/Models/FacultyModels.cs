@@ -58,7 +58,7 @@ namespace ElJournal.Models
         public static List<Faculty> ToFaculties(List<Dictionary<string, dynamic>> facultyList)
         {
             if (facultyList.Count == 0)
-                return null;
+                return new List<Faculty>();
             else
             {
                 var faculties = new List<Faculty>(facultyList.Count);

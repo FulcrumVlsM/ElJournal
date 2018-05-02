@@ -241,10 +241,14 @@
     <Compile Include="Models\IdentityModels.cs" />
     <Compile Include="Models\IndependentWorkModels.cs" />
     <Compile Include="Models\LabWorkModels.cs" />
+    <Compile Include="Models\LessonModels.cs" />
     <Compile Include="Models\MessageModels.cs" />
     <Compile Include="Models\PersonModels.cs" />
     <Compile Include="Models\FacultyModels.cs" />
+    <Compile Include="Models\PracticeWorkModels.cs" />
     <Compile Include="Models\Response.cs" />
+    <Compile Include="Models\RightModels.cs" />
+    <Compile Include="Models\RoleModels.cs" />
     <Compile Include="Models\SemesterModels.cs" />
     <Compile Include="Models\StudentModels.cs" />
     <Compile Include="Models\SubjectModels.cs" />

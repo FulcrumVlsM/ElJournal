@@ -1,37 +1,33 @@
-﻿using System;
+﻿using ElJournal.DBInteract;
+using Newtonsoft.Json;
+using NLog;
+using System;
 using System.Collections.Generic;
+using System.Configuration;
+using System.Data.SqlClient;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Web;
-using ElJournal.DBInteract;
-using NLog;
-using System.IO;
-using System.Data.SqlClient;
-using System.Configuration;
-using Newtonsoft.Json;
 
 namespace ElJournal.Models
 {
-    public class LabWork
+    public class PracticeWork : LabWork
     {
-        public string ID { get; set; }
-        public string Name { get; set; }
         [JsonIgnore]
-        public virtual string FileName { get; set; }
+        public override string FileName { get; set; }
         [JsonIgnore]
-        public virtual string FileURL { get; set; }
-        public string Advanced { get; set; }
-        public string AuthorId { get; set; }
+        public override string FileURL { get; set; }
 
 
         /// <summary>
-        /// Возвращает лабораторную работу по указанному ID
+        /// Возвращает практическую работу по указанному ID
         /// </summary>
         /// <param name="id">id лабораторной работы</param>
         /// <returns></returns>
-        public static async Task<LabWork> GetInstanceAsync(string id)
+        public new static async Task<PracticeWork> GetInstanceAsync(string id)
         {
-            string sqlQuery = "select * from LabWorks where ID=@id";
+            string sqlQuery = "select * from PracticeWorks where ID=@id";
             var parameters = new Dictionary<string, string>
             {
                 { "@id", id }
@@ -41,7 +37,7 @@ namespace ElJournal.Models
                 DB db = DB.GetInstance();
                 var obj = await db.ExecSelectQuerySingleAsync(sqlQuery, parameters);
                 if (obj != null)
-                    return new LabWork
+                    return new PracticeWork
                     {
                         ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : null,
                         Name = obj.ContainsKey("name") ? obj["name"].ToString() : null,
@@ -62,13 +58,13 @@ namespace ElJournal.Models
         }
 
         /// <summary>
-        /// Возвращает лабораторную работу по указанному ID (только основные данные)
+        /// Возвращает практическую работу по указанному ID (только основные данные)
         /// </summary>
-        /// <param name="id">id лабораторной работы</param>
+        /// <param name="id">id практической работы</param>
         /// <returns></returns>
-        public static async Task<LabWork> GetLightInstanceAsync(string id)
+        public new static async Task<PracticeWork> GetLightInstanceAsync(string id)
         {
-            string sqlQuery = "select ID,name from LabWorks where ID=@id";
+            string sqlQuery = "select ID,name from PracticeWorks where ID=@id";
             var parameters = new Dictionary<string, string>
             {
                 { "@id", id }
@@ -78,7 +74,7 @@ namespace ElJournal.Models
                 DB db = DB.GetInstance();
                 var obj = await db.ExecSelectQuerySingleAsync(sqlQuery, parameters);
                 if (obj != null)
-                    return new LabWork
+                    return new PracticeWork
                     {
                         ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : null,
                         Name = obj.ContainsKey("name") ? obj["name"].ToString() : null
@@ -95,18 +91,42 @@ namespace ElJournal.Models
         }
 
         /// <summary>
-        /// Возвращает полный список лабораторных работ
+        /// Пребразует коллекцию словарей в коллекцию моделей
+        /// </summary>
+        /// <param name="works"></param>
+        /// <returns></returns>
+        public static List<PracticeWork> ToPractWork(List<Dictionary<string, dynamic>> works)
+        {
+            var practWorks = new List<PracticeWork>(works.Count);
+            foreach (var obj in works)
+            {
+                practWorks.Add(new PracticeWork
+                {
+                    ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : null,
+                    Name = obj.ContainsKey("name") ? obj["name"].ToString() : null,
+                    FileName = obj.ContainsKey("fileName") ? obj["fileName"].ToString() : null,
+                    FileURL = obj.ContainsKey("fileURL") ? obj["fileURL"].ToString() : null,
+                    Advanced = obj.ContainsKey("advanced") ? obj["advanced"].ToString() : null,
+                    AuthorId = obj.ContainsKey("authorID") ? obj["authorID"].ToString() : null
+                });
+            }
+
+            return practWorks;
+        }
+
+        /// <summary>
+        /// Возвращает полный список практических работ
         /// </summary>
         /// <returns></returns>
-        public static async Task<List<LabWork>> GetCollectionAsync()
+        public new static async Task<List<PracticeWork>> GetCollectionAsync()
         {
             try
             {
-                string sqlQuery = "select ID,name,authorID from LabWorks";
+                string sqlQuery = "select ID,name,authorID from PracticeWorks";
                 DB db = DB.GetInstance();
                 var result = await db.ExecSelectQueryAsync(sqlQuery);
-                var labWorks = ToLabWork(result);
-                return labWorks;
+                var practWorks = ToPractWork(result);
+                return practWorks;
             }
             catch (Exception e)
             {
@@ -117,15 +137,15 @@ namespace ElJournal.Models
         }
 
         /// <summary>
-        /// Возвращает полный список лабораторных работ
+        /// Возвращает полный список практических работ
         /// </summary>
         /// <param name="authorId">id автора</param>
         /// <returns></returns>
-        public static async Task<List<LabWork>> GetCollectionAsync(string authorId)
+        public new static async Task<List<LabWork>> GetCollectionAsync(string authorId)
         {
             try
             {
-                string sqlQuery = "select ID,name,authorID from dbo.GetLabWorksOfTheAuthor(@authorId)";
+                string sqlQuery = "select ID,name,authorID from dbo.GetPractWorksOfTheAuthor(@authorId)";
                 var parameters = new Dictionary<string, string>
                 {
                     { "@authorId", authorId }
@@ -144,37 +164,13 @@ namespace ElJournal.Models
         }
 
         /// <summary>
-        /// Пребразует коллекцию словарей в коллекцию моделей
-        /// </summary>
-        /// <param name="works"></param>
-        /// <returns></returns>
-        public static List<LabWork> ToLabWork(List<Dictionary<string, dynamic>> works)
-        {
-            var labWorks = new List<LabWork>(works.Count);
-            foreach (var obj in works)
-            {
-                labWorks.Add(new LabWork
-                {
-                    ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : null,
-                    Name = obj.ContainsKey("name") ? obj["name"].ToString() : null,
-                    FileName = obj.ContainsKey("fileName") ? obj["fileName"].ToString() : null,
-                    FileURL = obj.ContainsKey("fileURL") ? obj["fileURL"].ToString() : null,
-                    Advanced = obj.ContainsKey("advanced") ? obj["advanced"].ToString() : null,
-                    AuthorId = obj.ContainsKey("authorID") ? obj["authorID"].ToString() : null
-                });
-            }
-
-            return labWorks;
-        }
-
-        /// <summary>
-        /// Сохраняет текущий объект LabWork в БД
+        /// Сохраняет текущий объект PracticeWork в БД
         /// </summary>
         /// <param name="authorId">автор</param>
         /// <returns>True, если объект был добавлен в БД</returns>
-        public virtual async Task<bool> Push(string authorId)
+        public override async Task<bool> Push(string authorId)
         {
-            string procName = "dbo.AddLabWork";
+            string procName = "dbo.AddPracticeWork";
             var parameters = new Dictionary<string, string>
             {
                 { "@name", Name },
@@ -186,7 +182,7 @@ namespace ElJournal.Models
                 DB db = DB.GetInstance();
                 return Convert.ToBoolean(await db.ExecStoredProcedureAsync(procName, parameters));
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 Logger logger = LogManager.GetCurrentClassLogger();
                 logger.Fatal(e.ToString());
@@ -195,10 +191,10 @@ namespace ElJournal.Models
         }
 
         /// <summary>
-        /// Сохраняет указанное имя и URL файла как присоединенный файл
+        /// Присоединяет файл к практической работе
         /// </summary>
         /// <returns></returns>
-        public virtual async Task<bool> AttachFile(byte[] fileArray)
+        public override async Task<bool> AttachFile(byte[] fileArray)
         {
             if (string.IsNullOrWhiteSpace(FileURL) || string.IsNullOrWhiteSpace(FileName))
                 return false;
@@ -211,7 +207,7 @@ namespace ElJournal.Models
                     await fs.WriteAsync(fileArray, 0, fileArray.Length);
                 }
 
-                string sqlQuery = "dbo.UpdateLabWork";
+                string sqlQuery = "dbo.UpdatePractWork";
                 var parameters = new Dictionary<string, string>();
                 DB db = DB.GetInstance();
                 parameters.Add("@ID", ID);
@@ -225,7 +221,7 @@ namespace ElJournal.Models
                 logger.Warn(string.Format("Конфликт имени файла при добавлении на сервер. {0}", FileName)); //запись лога с ошибкой
                 return false;
             }
-            catch(SqlException e)
+            catch (SqlException e)
             {
                 Logger logger = LogManager.GetCurrentClassLogger();
                 logger.Fatal(e.ToString());
@@ -234,10 +230,10 @@ namespace ElJournal.Models
         }
 
         /// <summary>
-        /// удаляет запись о присоединенном файле
+        /// Удаляет присоединенный файл
         /// </summary>
         /// <returns></returns>
-        public virtual async Task<bool> DetachFile()
+        public override async Task<bool> DetachFile()
         {
             if (string.IsNullOrWhiteSpace(FileURL) || string.IsNullOrWhiteSpace(FileName))
                 return false;
@@ -255,7 +251,7 @@ namespace ElJournal.Models
                 else
                     throw new FileNotFoundException("Не удалось обновить в БД, что файл был удален", name);
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 Logger logger = LogManager.GetCurrentClassLogger();
                 logger.Warn(e.ToString());
@@ -267,9 +263,9 @@ namespace ElJournal.Models
         /// Обновляет в БД выбранный объект (по ID)
         /// </summary>
         /// <returns></returns>
-        public virtual async Task<bool> Update()
+        public override async Task<bool> Update()
         {
-            string procName = "dbo.UpdateLabWork";
+            string procName = "dbo.UpdatePractWork";
             var parameters = new Dictionary<string, string>
             {
                 { "@ID", ID },
@@ -281,7 +277,7 @@ namespace ElJournal.Models
                 DB db = DB.GetInstance();
                 return Convert.ToBoolean(await db.ExecStoredProcedureAsync(procName, parameters));
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 Logger logger = LogManager.GetCurrentClassLogger();
                 logger.Fatal(e.ToString());
@@ -293,9 +289,9 @@ namespace ElJournal.Models
         /// Удаление текущего объекта из БД
         /// </summary>
         /// <returns></returns>
-        public virtual bool Delete()
+        public override bool Delete()
         {
-            string sqlQuery = "dbo.DeleteLabWork";
+            string procName = "dbo.DeletePractWork";
             var parameters = new Dictionary<string, string>
             {
                 { "@id", ID }
@@ -303,7 +299,7 @@ namespace ElJournal.Models
             try
             {
                 DB db = DB.GetInstance();
-                int result = db.ExecInsOrDelQuery(sqlQuery, parameters);
+                int result = db.ExecInsOrDelQuery(procName, parameters);
                 if (result == 1)
                 {
                     ID = null;
@@ -319,25 +315,36 @@ namespace ElJournal.Models
                 return false;
             }
         }
-
     }
 
-
-    public class LabWorkPlan
+    public class ExecutedPractWork : ExecutedLabWork
     {
-        public string ID { get; set; }
-        public virtual LabWork Work { get; set; }
-        public string FlowSubjectId { get; set; }
-        public DateTime? EndDate { get; set; }
+        public new static List<ExecutedPractWork> ToLabWork(List<Dictionary<string, dynamic>> works)
+        {
+            var practWorks = new List<ExecutedPractWork>(works.Count);
+            foreach (var obj in works)
+            {
+                practWorks.Add(new ExecutedPractWork
+                {
+                    ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : null,
+                    PlanId = obj.ContainsKey("LabWorkPlanID") ? obj["LabWorkPlanID"].ToString() : null,
+                    Info = obj.ContainsKey("info") ? obj["info"].ToString() : null,
+                    StudentFlowSubjectId = obj.ContainsKey("StudentFlowSubjectID") ? obj["StudentFlowSubjectID"].ToString() : null,
+                    Date = obj.ContainsKey("date") ? obj["date"] : default(DateTime)
+                });
+            }
+
+            return practWorks;
+        }
 
         /// <summary>
-        /// Возвращает лабораторную работу в плане по указанному ID
+        /// Возвращает объект выполнения практической работы в плане по указанному ID
         /// </summary>
-        /// <param name="id">id лабораторной работы</param>
+        /// <param name="id"></param>
         /// <returns></returns>
-        public static async Task<LabWorkPlan> GetInstanceAsync(string id)
+        public new static async Task<ExecutedPractWork> GetInstanceAsync(string id)
         {
-            string sqlQuery = "select * from LabWorksPlan where ID=@id";
+            string sqlQuery = "select * from PracticeWorkExecution where ID=@id";
             var parameters = new Dictionary<string, string>
             {
                 { "@id", id }
@@ -348,11 +355,13 @@ namespace ElJournal.Models
                 var obj = await db.ExecSelectQuerySingleAsync(sqlQuery, parameters);
                 if (obj != null)
                 {
-                    return new LabWorkPlan
+                    return new ExecutedPractWork
                     {
                         ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : null,
-                        Work = obj.ContainsKey("LabWorkID") ? await LabWork.GetInstanceAsync(obj["LabWorkID"]) : null,
-                        FlowSubjectId = obj.ContainsKey("FlowSubjectID") ? obj["FlowSubjectID"].ToString() : null
+                        PlanId = obj.ContainsKey("LabWorkPlanID") ? obj["LabWorkPlanID"].ToString() : null,
+                        Info = obj.ContainsKey("info") ? obj["info"].ToString() : null,
+                        StudentFlowSubjectId = obj.ContainsKey("StudentFlowSubjectID") ? obj["StudentFlowSubjectID"].ToString() : null,
+                        Date = obj.ContainsKey("date") ? obj["date"] : default(DateTime)
                     };
                 }
                 else
@@ -367,38 +376,17 @@ namespace ElJournal.Models
         }
 
         /// <summary>
-        /// Пребразует коллекцию словарей в коллекцию моделей
-        /// </summary>
-        /// <param name="works"></param>
-        /// <returns></returns>
-        public static async Task<List<LabWorkPlan>> ToLabWork(List<Dictionary<string, dynamic>> works)
-        {
-            var labWorks = new List<LabWorkPlan>(works.Count);
-            foreach (var obj in works)
-            {
-                labWorks.Add(new LabWorkPlan
-                {
-                    ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : null,
-                    Work = obj.ContainsKey("LabWorkID") ? await LabWork.GetLightInstanceAsync(obj["LabWorkID"]) : null,
-                    FlowSubjectId = obj.ContainsKey("FlowSubjectID") ? obj["FlowSubjectID"].ToString() : null
-                });
-            }
-
-            return labWorks;
-        }
-
-        /// <summary>
-        /// Возвращает полный список лабораторных работ в планах по всем предметам
+        /// Возвращает полный список выполнений практических работ студентами
         /// </summary>
         /// <returns></returns>
-        public static async Task<List<LabWorkPlan>> GetCollectionAsync()
+        public new static async Task<List<ExecutedPractWork>> GetCollectionAsync()
         {
             try
             {
-                string sqlQuery = "select * from LabWorksPlan";
+                string sqlQuery = "select * from PracticeWorkExecution";
                 DB db = DB.GetInstance();
                 var result = await db.ExecSelectQueryAsync(sqlQuery);
-                var labWorks = await ToLabWork(result);
+                var labWorks = ToLabWork(result);
                 return labWorks;
             }
             catch (Exception e)
@@ -410,17 +398,45 @@ namespace ElJournal.Models
         }
 
         /// <summary>
-        /// Сохраняет текущий объект LabWorkPlan в БД
+        /// Возвращает полный список выполнений практических работ студентами
+        /// </summary>
+        /// <param name="studentFlowId">id студента в потоке</param>
+        /// <returns></returns>
+        public new static async Task<List<ExecutedPractWork>> GetCollectionAsync(string studentFlowId)
+        {
+            try
+            {
+                string sqlQuery = "select * from PracticeWorkExecution where StudentFlowSemesterID=@studentId";
+                var parameters = new Dictionary<string, string>
+                {
+                    { "@studentId", studentFlowId }
+                };
+                DB db = DB.GetInstance();
+                var result = await db.ExecSelectQueryAsync(sqlQuery);
+                var practWorks = ToLabWork(result);
+                return practWorks;
+            }
+            catch (Exception e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Fatal(e.ToString());
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Сохраняет текущий объект PracticeWorkExecution в БД
         /// </summary>
         /// <param name="authorId">автор</param>
         /// <returns>True, если объект был добавлен в БД</returns>
-        public virtual async Task<bool> Push()
+        public override async Task<bool> Push()
         {
-            string procName = "dbo.AddLabWorkPlan";
+            string procName = "dbo.AddPractWorkExecution";
             var parameters = new Dictionary<string, string>
             {
-                { "@labWorkId", Work.ID },
-                { "@flowSubjId", FlowSubjectId }
+                { "@labWorkPlanId", PlanId },
+                { "@info", Info },
+                { "@studentId", StudentFlowSubjectId }
             };
             try
             {
@@ -439,9 +455,9 @@ namespace ElJournal.Models
         /// Удаление текущего объекта из БД
         /// </summary>
         /// <returns></returns>
-        public virtual bool Delete()
+        public override bool Delete()
         {
-            string sqlQuery = "delete from LabWorksPlan where ID=@ID";
+            string sqlQuery = "delete from PracticeWorkExecution where ID=@ID";
             var parameters = new Dictionary<string, string>
             {
                 { "@ID", ID }
@@ -467,41 +483,21 @@ namespace ElJournal.Models
         }
     }
 
-    
-    public class ExecutedLabWork
+    public class PracticeWorkPlan
     {
         public string ID { get; set; }
-        public string PlanId { get; set; }
-        public string Info { get; set; }
-        public DateTime Date { get; set; }
-        public string StudentFlowSubjectId { get; set; }
+        public virtual PracticeWork Work { get; set; }
+        public string FlowSubjectId { get; set; }
 
-        public static List<ExecutedLabWork> ToLabWork(List<Dictionary<string, dynamic>> works)
-        {
-            var labWorks = new List<ExecutedLabWork>(works.Count);
-            foreach (var obj in works)
-            {
-                labWorks.Add(new ExecutedLabWork
-                {
-                    ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : null,
-                    PlanId = obj.ContainsKey("LabWorkPlanID") ? obj["LabWorkPlanID"].ToString() : null,
-                    Info = obj.ContainsKey("info") ? obj["info"].ToString() : null,
-                    StudentFlowSubjectId = obj.ContainsKey("StudentFlowSubjectID") ? obj["StudentFlowSubjectID"].ToString() : null,
-                    Date = obj.ContainsKey("date") ? obj["date"] : default(DateTime)
-                });
-            }
-
-            return labWorks;
-        }
 
         /// <summary>
-        /// Возвращает объект выполнения лабораторной работы в плане по указанному ID
+        /// Возвращает лабораторную работу в плане по указанному ID
         /// </summary>
-        /// <param name="id"></param>
+        /// <param name="id">id лабораторной работы</param>
         /// <returns></returns>
-        public static async Task<ExecutedLabWork> GetInstanceAsync(string id)
+        public static async Task<PracticeWorkPlan> GetInstanceAsync(string id)
         {
-            string sqlQuery = "select * from LabWorksExecution where ID=@id";
+            string sqlQuery = "select * from LabWorksPlan where ID=@id";
             var parameters = new Dictionary<string, string>
             {
                 { "@id", id }
@@ -512,13 +508,11 @@ namespace ElJournal.Models
                 var obj = await db.ExecSelectQuerySingleAsync(sqlQuery, parameters);
                 if (obj != null)
                 {
-                    return new ExecutedLabWork
+                    return new PracticeWorkPlan
                     {
                         ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : null,
-                        PlanId = obj.ContainsKey("LabWorkPlanID") ? obj["LabWorkPlanID"].ToString() : null,
-                        Info = obj.ContainsKey("info") ? obj["info"].ToString() : null,
-                        StudentFlowSubjectId = obj.ContainsKey("StudentFlowSubjectID") ? obj["StudentFlowSubjectID"].ToString() : null,
-                        Date = obj.ContainsKey("date") ? obj["date"] : default(DateTime)
+                        Work = obj.ContainsKey("LabWorkID") ? await LabWork.GetInstanceAsync(obj["LabWorkID"]) : null,
+                        FlowSubjectId = obj.ContainsKey("FlowSubjectID") ? obj["FlowSubjectID"].ToString() : null
                     };
                 }
                 else
@@ -533,67 +527,60 @@ namespace ElJournal.Models
         }
 
         /// <summary>
-        /// Возвращает полный список лабораторных работ в планах по всем предметам
+        /// Пребразует коллекцию словарей в коллекцию моделей
         /// </summary>
+        /// <param name="works"></param>
         /// <returns></returns>
-        public static async Task<List<ExecutedLabWork>> GetCollectionAsync()
+        public static async Task<List<PracticeWorkPlan>> ToPracticeWork(List<Dictionary<string, dynamic>> works)
         {
-            try
+            var practWorks = new List<PracticeWorkPlan>(works.Count);
+            foreach (var obj in works)
             {
-                string sqlQuery = "select * from LabWorksExecution";
-                DB db = DB.GetInstance();
-                var result = await db.ExecSelectQueryAsync(sqlQuery);
-                var labWorks = ToLabWork(result);
-                return labWorks;
-            }
-            catch (Exception e)
-            {
-                Logger logger = LogManager.GetCurrentClassLogger();
-                logger.Fatal(e.ToString());
-                return null;
-            }
-        }
-
-        /// <summary>
-        /// Возвращает полный список лабораторных работ в планах по всем предметам
-        /// </summary>
-        /// <param name="studentFlowId">id студента в потоке</param>
-        /// <returns></returns>
-        public static async Task<List<ExecutedLabWork>> GetCollectionAsync(string studentFlowId)
-        {
-            try
-            {
-                string sqlQuery = "select * from LabWorksExecution where StudentFlowSemesterID=@studentId";
-                var parameters = new Dictionary<string, string>
+                practWorks.Add(new PracticeWorkPlan
                 {
-                    { "@studentId", studentFlowId }
-                };
+                    ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : null,
+                    Work = obj.ContainsKey("LabWorkID") ? await LabWork.GetLightInstanceAsync(obj["LabWorkID"]) : null,
+                    FlowSubjectId = obj.ContainsKey("FlowSubjectID") ? obj["FlowSubjectID"].ToString() : null
+                });
+            }
+
+            return practWorks;
+        }
+
+        /// <summary>
+        /// Возвращает полный список пунктов планов практических работ
+        /// </summary>
+        /// <returns></returns>
+        public static async Task<List<PracticeWorkPlan>> GetCollectionAsync()
+        {
+            try
+            {
+                string sqlQuery = "select * from LabWorksPlan";
                 DB db = DB.GetInstance();
                 var result = await db.ExecSelectQueryAsync(sqlQuery);
-                var labWorks = ToLabWork(result);
-                return labWorks;
+                var practWorks = await ToPracticeWork(result);
+                return practWorks;
             }
             catch (Exception e)
             {
                 Logger logger = LogManager.GetCurrentClassLogger();
                 logger.Fatal(e.ToString());
-                return null;
+                return new List<PracticeWorkPlan>();
             }
         }
 
         /// <summary>
-        /// Сохраняет текущий объект LabWorkExecution в БД
+        /// Сохраняет текущий объект PracticeWorkPlan в БД
         /// </summary>
         /// <param name="authorId">автор</param>
         /// <returns>True, если объект был добавлен в БД</returns>
-        public virtual async Task<bool> Push()
+        public async Task<bool> Push()
         {
-            string procName = "dbo.AddLabWorkExecution";
+            string procName = "dbo.AddPractWorkPlan";
             var parameters = new Dictionary<string, string>
             {
-                { "@labWorkPlanId", PlanId },
-                { "@info", Info },
-                { "@studentId", StudentFlowSubjectId }
+                { "@practWorkId", Work.ID },
+                { "@flowSubjId", FlowSubjectId }
             };
             try
             {
@@ -612,9 +599,9 @@ namespace ElJournal.Models
         /// Удаление текущего объекта из БД
         /// </summary>
         /// <returns></returns>
-        public virtual bool Delete()
+        public bool Delete()
         {
-            string sqlQuery = "delete from LabWorksExecution where ID=@ID";
+            string sqlQuery = "delete from PracticeWorksPlan where ID=@ID";
             var parameters = new Dictionary<string, string>
             {
                 { "@ID", ID }

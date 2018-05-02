@@ -25,15 +25,19 @@ namespace ElJournal.Controllers
 
         // GET: api/Alerts
         // возвращает список всех уведомлений.
-        //TODO: надо, чтобы авторизированный пользователь получал все, доступные ему уведомления: 
-        //студент по предметам, на которых учится, своей кафедры, факультета и т.д.
-        public async Task<HttpResponseMessage> Get([FromUri]DateTime? startDate=null, [FromUri]DateTime? endDate=null)
+        [HttpGet]
+        [Route("api/Alerts")]
+        public async Task<HttpResponseMessage> Get([FromUri]string startDate=null, [FromUri]string endDate=null)
         {
             Response response = new Response();
-            startDate = startDate ?? DateTime.Today.AddDays(-2); //по умолчанию возьмутся уведомления за 2 последних дня
-            endDate = endDate ?? DateTime.UtcNow;
+            DateTime start = default(DateTime),
+                end = default(DateTime);
+            if (!DateTime.TryParse(startDate, out start))
+                start = DateTime.Today.AddDays(-2);
+            if (!DateTime.TryParse(endDate, out end))
+                end = DateTime.Today.AddDays(1);
 
-            var alerts = await Alert.GetCollectionAsync(startDate.Value, endDate.Value);
+            var alerts = await Alert.GetCollectionAsync(start, end);
 
             //идентификация пользователя
             string token = Request?.Headers?.Authorization?.Scheme; //id пользователя из заголовка http
@@ -51,6 +55,8 @@ namespace ElJournal.Controllers
 
         // GET: api/Alerts/5
         // возвращает уведомление по id
+        [HttpGet]
+        [Route("api/Alerts/{id}")]
         public async Task<HttpResponseMessage> Get(string id)
         {
             Response response = new Response();
@@ -133,6 +139,7 @@ namespace ElJournal.Controllers
 
             if(commonRight || (depRight && facRight && subjRight))
             {
+                alert.AuthorID = authProvider.PersonId;
                 if (await alert.Push())
                     return Request.CreateResponse(HttpStatusCode.Created);
                 else
@@ -161,6 +168,7 @@ namespace ElJournal.Controllers
             {
                 alert.Opened = true;
                 alert.FlowSubjectId = null;
+                alert.AuthorID = authProvider.PersonId;
                 if (await alert.Push())
                     return Request.CreateResponse(HttpStatusCode.Created);
                 else
@@ -173,6 +181,8 @@ namespace ElJournal.Controllers
 
         // PUT: api/Alerts/5
         // изменение уведомления
+        [HttpPut]
+        [Route("api/Alerts/{id}")]
         public async Task<HttpResponseMessage> Put(string id, [FromBody]Alert alert)
         {
             //идентификация пользователя
@@ -204,6 +214,8 @@ namespace ElJournal.Controllers
 
         // DELETE: api/Alerts/5
         // удаление уведомления
+        [HttpDelete]
+        [Route("api/Alerts/{id}")]
         public async Task<HttpResponseMessage> Delete(string id)
         {
             //идентификация пользователя

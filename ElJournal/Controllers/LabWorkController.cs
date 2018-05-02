@@ -20,7 +20,7 @@ namespace ElJournal.Controllers
     //develop: Mikhail
     public class LabWorkController : ApiController
     {
-        // получить весь список лабораторных (администратор, администратор кафедры, администратор факультета)
+        // получить весь список лабораторных (все рег. пользователи)
         // получить конкретную лабораторную по id (все)
         // получить файл, прикрепленный к лаб работе (все рег. пользователи)
         // получить список моих лабораторных работ (все рег. пользователи)
@@ -38,46 +38,33 @@ namespace ElJournal.Controllers
         // установить лаб работу из плана как выполненную студентом (преподаватель, администратор)
         // удалить факт выполнения лабораторной работы (преподаватель, администратор)
 
-        string fileURL = ConfigurationManager.AppSettings["FileStorage"];
-
 
         // GET: api/LabWork
-        // получить весь список лабораторных (администратор)
-        public async Task<IHttpActionResult> Get([FromUri]string name = null)
+        // получить весь список лабораторных (все рег. пользователи)
+        public async Task<HttpResponseMessage> Get([FromUri]string name = null, [FromUri]int count=50)
         {
             Response response = new Response();
+
+            //идентификация пользователя
             string token = Request?.Headers?.Authorization?.Scheme; //token пользователя
             NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
+            if (authProvider == null)
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
 
-            if (authProvider == null) //клиент получит 401, если не добавит токен в запрос
-                return Unauthorized(null);
+            var works = await LabWork.GetCollectionAsync();
+            works = (works.Take(count)).ToList();
 
-            if (authProvider.CheckPermission(Permission.LBWRK_COMMON_PERMISSION))// требуются права адмниистратора
+            if (!string.IsNullOrEmpty(name))// если шаблон для поиска не задавался
             {
-                try
-                {
-                    if (string.IsNullOrEmpty(name))// если шаблон для поиска не задавался
-                    {
-                        response.Data = await LabWork.GetCollectionAsync();
-                    }
-                    else // если шаблон поиска был задан
-                    {
-                        Regex regex = new Regex(name);
-                        response.Data = (await LabWork.GetCollectionAsync())
-                            .Where(x => regex.IsMatch(x.Name) || regex.IsMatch(x.Advanced)).ToList();
-                    }
-                }
-                catch (Exception e)
-                {
-                    Logger logger = LogManager.GetCurrentClassLogger();
-                    logger.Info(e.ToString());
-                    return InternalServerError();
-                }
-
-                return Ok(response);
+                Regex regex = new Regex(name);
+                works = works.FindAll(x => regex.IsMatch(x.Name) || regex.IsMatch(x.Advanced));
             }
+
+            response.Data = works;
+            if (works.Count > 0)
+                return Request.CreateResponse(HttpStatusCode.OK, response);
             else
-                throw new HttpResponseException(HttpStatusCode.Forbidden);
+                return Request.CreateResponse(HttpStatusCode.NoContent, response);
         }
 
 
@@ -88,30 +75,19 @@ namespace ElJournal.Controllers
         public async Task<HttpResponseMessage> GetMy()
         {
             Response response = new Response();
+
             string token = Request?.Headers?.Authorization?.Scheme;
             NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
-            string sqlQuery = "select ID, name from LabWorks where authorID=@authorId";
-            var parameters = new Dictionary<string, string>();
-
-            if (authProvider != null)
-            {
-                try
-                {
-                    DB db = DB.GetInstance();
-                    parameters.Add("@authorId", authProvider.PersonId);
-                    var my = await db.ExecSelectQueryAsync(sqlQuery, parameters);//получение списка из БД
-                    response.Data = LabWork.ToLabWork(my); //преобразование списка к модели
-                    return Request.CreateResponse(HttpStatusCode.OK, response);
-                }
-                catch(Exception e)
-                {
-                    Logger logger = LogManager.GetCurrentClassLogger();
-                    logger.Fatal(e.ToString()); //запись лога с ошибкой
-                    return Request.CreateResponse(HttpStatusCode.InternalServerError);
-                }
-            }
-            else
+            if(authProvider == null)
                 return Request.CreateResponse(HttpStatusCode.Unauthorized);
+
+            var works = await LabWork.GetCollectionAsync(authProvider.PersonId);
+            response.Data = works;
+
+            if(works.Count>0)
+                return Request.CreateResponse(HttpStatusCode.OK, response);
+            else
+                return Request.CreateResponse(HttpStatusCode.NoContent, response);
         }
 
 
@@ -122,23 +98,13 @@ namespace ElJournal.Controllers
         public async Task<HttpResponseMessage> GetPlan(string flowSubjectId)
         {
             Response response = new Response();
-
-            try
-            {
-                var list = await LabWorkPlan.GetCollectionAsync();
-                list = list.FindAll(x => x.FlowSubjectId == flowSubjectId);
-                response.Data = list;
-                if(list.Count>0)
-                    return Request.CreateResponse(HttpStatusCode.OK, response);
-                else
-                    return Request.CreateResponse(HttpStatusCode.NoContent, response);
-            }
-            catch(Exception e)
-            {
-                Logger logger = LogManager.GetCurrentClassLogger();
-                logger.Fatal(e.ToString()); //запись лога с ошибкой
-                return Request.CreateResponse(HttpStatusCode.InternalServerError);
-            }
+            var list = await LabWorkPlan.GetCollectionAsync();
+            list = list.FindAll(x => x.FlowSubjectId == flowSubjectId);
+            response.Data = list;
+            if (list.Count > 0)
+                return Request.CreateResponse(HttpStatusCode.OK, response);
+            else
+                return Request.CreateResponse(HttpStatusCode.NoContent, response);
         }
 
 
@@ -159,11 +125,11 @@ namespace ElJournal.Controllers
             if(fSubject == null)
                 return Request.CreateResponse(HttpStatusCode.BadRequest);
 
-            var exLabs = await ExecutedLabWork.GetCollectionAsync();
+            var exLabs = await ExecutedLabWork.GetCollectionAsync(studentFlowId);
             exLabs = exLabs.FindAll(x =>
             {
                 LabWorkPlan plan = (LabWorkPlan.GetInstanceAsync(x.PlanId)).Result;
-                return (plan.FlowSubjectId == subjectFlowId) && (x.StudentFlowSubjectId == studentFlowId);
+                return plan.FlowSubjectId == fSubject.ID;
             });
 
             response.Data = exLabs;
@@ -178,20 +144,15 @@ namespace ElJournal.Controllers
         // получить конкретную лабораторную по id (все)
         [HttpGet]
         [Route("api/LabWork/{id}")]
-        public async Task<dynamic> GetConcrete(string id)
+        public async Task<HttpResponseMessage> GetConcrete(string id)
         {
             Response response = new Response();
-            try
-            {
-                response.Data = await LabWork.GetInstanceAsync(id);
-                return Ok(response);
-            }
-            catch(Exception e)
-            {
-                Logger logger = LogManager.GetCurrentClassLogger();
-                logger.Fatal(e.ToString()); //запись лога с ошибкой
-                return InternalServerError();
-            }
+            LabWork labWork = await LabWork.GetInstanceAsync(id);
+            response.Data = labWork;
+            if (labWork != null)
+                return Request.CreateResponse(HttpStatusCode.OK, response);
+            else
+                return Request.CreateResponse(HttpStatusCode.NotFound);
         }
 
 
@@ -204,41 +165,41 @@ namespace ElJournal.Controllers
             //авторизация пользователя
             string token = Request?.Headers?.Authorization?.Scheme;
             NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
+            if (authProvider == null)
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
 
-            if (authProvider != null)
+            LabWork labWork = await LabWork.GetInstanceAsync(id);// получение лабораторной работы
+            if (labWork == null)
+                return Request.CreateResponse(HttpStatusCode.BadRequest);
+
+            string path = labWork.FileURL + labWork.FileName; // физический путь к файлу
+            try
             {
-                LabWork labWork = await LabWork.GetInstanceAsync(id);// получение лабораторной работы
+                if (string.IsNullOrEmpty(path))//если к работе не приложен файл, сгенерируется exception
+                    throw new FileNotFoundException("This labwork don't have attachment file");
 
-                string path = labWork.FileURL + labWork.FileName; // физический путь к файлу
-                try
+                var stream = new FileStream(path, FileMode.Open);
+
+                //отправка файла
+                var result = new HttpResponseMessage(HttpStatusCode.OK)
                 {
-                    if (string.IsNullOrEmpty(path))//если к работе не приложен файл, сгенерируется exception
-                        throw new FileNotFoundException("This labwork don't have attachment file");
-
-                    var stream = new FileStream(path, FileMode.Open);
-
-                    //отправка файла
-                    var result = new HttpResponseMessage(HttpStatusCode.OK);
-                    result.Content = new StreamContent(stream);
-                    result.Content.Headers.ContentDisposition =
-                        new ContentDispositionHeaderValue("attachment")
-                        {
-                            FileName = labWork.FileName
-                        };
-                    result.Content.Headers.ContentType =
-                        new MediaTypeHeaderValue("application/octet-stream");
-
-                    return result;
-                }
-                catch (FileNotFoundException e)
+                    Content = new StreamContent(stream)
+                };
+                result.Content.Headers.ContentDisposition = new ContentDispositionHeaderValue("attachment")
                 {
-                    Logger logger = LogManager.GetCurrentClassLogger();
-                    logger.Error(e.ToString()); //запись лога с ошибкой
-                    return new HttpResponseMessage(HttpStatusCode.NotFound);
-                }
+                    FileName = labWork.FileName
+                };
+                result.Content.Headers.ContentType =
+                    new MediaTypeHeaderValue("application/octet-stream");
+
+                return result;
             }
-            else
-                return new HttpResponseMessage(HttpStatusCode.Unauthorized);
+            catch (FileNotFoundException e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Error(e.ToString()); //запись лога с ошибкой
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+            }
         }
 
 
@@ -276,7 +237,7 @@ namespace ElJournal.Controllers
                 LabWorkPlan plan = new LabWorkPlan
                 {
                     FlowSubjectId = subjectFlowId,
-                    labWork = lab
+                    Work = lab
                 };
                 if (await plan.Push())
                     return Request.CreateResponse(HttpStatusCode.Created);
@@ -291,7 +252,7 @@ namespace ElJournal.Controllers
         // POST: api/LabWork/exec/5/5?state=true
         // установить лаб работу из плана как выполненную студентом (преподаватель, администратор)
         [HttpPost]
-        [Route("api/LabWork/exec/{studentId}/{workId}/{subjectGroupId}")]
+        [Route("api/LabWork/exec")]
         public async Task<HttpResponseMessage> PostExec([FromBody]ExecutedLabWork exLab)
         {
             //идентификация пользователя
@@ -325,49 +286,31 @@ namespace ElJournal.Controllers
 
         // POST: api/LabWork
         // добавить лабораторную работу (преподаватель, администратор)
-        public async Task<IHttpActionResult> Post([FromBody]LabWork lab)
+        public async Task<HttpResponseMessage> Post([FromBody]LabWork lab)
         {
             Response response = new Response();
 
             //идентификация пользователя
             string token = Request?.Headers?.Authorization?.Scheme;
             NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
-            if (authProvider == null) //если пользователь не отправил токен получить ошибку 401
-                return Unauthorized(null);
+            if (authProvider == null)
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
 
-            try
+            //проверка наличия прав у пользователя
+            bool commonRight = default(bool),
+                teacherRight = default(bool);
+            Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.LBWRK_COMMON_PERMISSION),
+                            () => teacherRight = authProvider.CheckPermission(Permission.LBWRK_PERMISSION));
+
+            if (commonRight || teacherRight)
             {
-                //проверка наличия прав у пользователя
-                bool commonRight=default(bool),
-                    teacherRight=default(bool);
-                Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.LBWRK_COMMON_PERMISSION),
-                                () => teacherRight = authProvider.CheckPermission(Permission.LBWRK_PERMISSION));
-
-                if (commonRight || teacherRight)
-                {
-                    if (await lab.Push(authProvider.PersonId)) //добавление работы в БД
-                    {
-                        var id = await getLab(lab.Name, lab.Advanced);
-                        response.Data = new { ID = id };
-                        return Created(string.Format("api/LabWork/{0}", id), response);
-                    }
-                    else
-                    {
-                        Logger logger = LogManager.GetCurrentClassLogger();
-                        logger.Warn(string.Format("Не удалось добавить лабораторную работу. User: {0}, name: {1}",
-                            authProvider.PersonId, lab.Name)); //запись лога с ошибкой
-                        return Conflict();
-                    }
-                }
+                if (await lab.Push(authProvider.PersonId)) //добавление работы в БД
+                    return Request.CreateResponse(HttpStatusCode.Created);
                 else
-                    throw new HttpResponseException(HttpStatusCode.Forbidden);
+                    return Request.CreateResponse(HttpStatusCode.BadRequest);
             }
-            catch(Exception e)
-            {
-                Logger logger = LogManager.GetCurrentClassLogger();
-                logger.Fatal(e.ToString()); //запись лога с ошибкой
-                return InternalServerError();
-            }
+            else
+                return Request.CreateResponse(HttpStatusCode.Forbidden);
         }
 
 
@@ -375,14 +318,21 @@ namespace ElJournal.Controllers
         // добавить файл к лабораторной работе (автор, администратор)
         [HttpPost]
         [Route("api/LabWork/file/{id}")]
-        public async Task<IHttpActionResult> Post(string id)
+        public async Task<HttpResponseMessage> Post(string id)
         {
             //идентификация пользователя
             string token = Request?.Headers?.Authorization?.Scheme;
             NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
-            bool authorRight = default(bool), commonRight = default(bool);
+            if (authProvider == null)
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
+
+            //поиск лабораторной работы
+            LabWork lab = await LabWork.GetInstanceAsync(id);
+            if(lab == null)
+                return Request.CreateResponse(HttpStatusCode.BadRequest);
 
             //проверка прав пользователя
+            bool authorRight = default(bool), commonRight = default(bool);
             Parallel.Invoke(() => authorRight = authProvider.LabWorks.Contains(id),
                 () => commonRight = authProvider.CheckPermission(Permission.LBWRK_COMMON_PERMISSION));
 
@@ -390,79 +340,46 @@ namespace ElJournal.Controllers
             {
                 //запись файла
                 var provider = new MultipartMemoryStreamProvider();
-                string root = fileURL;
                 await Request.Content.ReadAsMultipartAsync(provider);
                 var file = provider.Contents[0];
                 var filename = file.Headers.ContentDisposition.FileName.Trim('\"');
                 byte[] fileArray = await file.ReadAsByteArrayAsync();
+                lab.FileName = filename;
 
-                try
-                {
-                    using (FileStream fs = new FileStream(root + filename, FileMode.CreateNew))
-                    {
-                        await fs.WriteAsync(fileArray, 0, fileArray.Length);
-                    }
-                }
-                catch (IOException)// если файл с таким именем есть на сервере, возникнет конфликт
-                {
-                    Logger logger = LogManager.GetCurrentClassLogger();
-                    logger.Warn(string.Format("Конфликт имени файла при добавлении на сервер. {0}",filename)); //запись лога с ошибкой
-                    return Conflict();
-                }
-
-                //запись в бд ссылки на файл
-                DB db = DB.GetInstance();
-                string procName = "dbo.UpdateLabWork";
-                var parameters = new Dictionary<string, string>();
-                parameters.Add("@ID", id);
-                parameters.Add("@fileName", filename);
-                parameters.Add("@fileUrl", fileURL);
-                bool result = Convert.ToBoolean(await db.ExecStoredProcedureAsync(procName, parameters));
-                if (result)
-                    return Ok();
+                if (await lab.AttachFile(fileArray))
+                    return Request.CreateResponse(HttpStatusCode.Created);
                 else
-                    return BadRequest();
+                    return Request.CreateResponse(HttpStatusCode.Conflict);
             }
             else
-                throw new HttpResponseException(HttpStatusCode.Forbidden);
+                return Request.CreateResponse(HttpStatusCode.Forbidden);
         }
 
 
         // PUT: api/LabWork/5
         // измененить лабораторную работу (автор, администратор)
-        public async Task<IHttpActionResult> Put(string id, [FromBody]LabWork lab)
+        public async Task<HttpResponseMessage> Put(string id, [FromBody]LabWork lab)
         {
             //идентификация пользователя
             string token = Request?.Headers?.Authorization?.Scheme;
             NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
+            if (authProvider == null)
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
 
-            try
+            //проверка наличия прав пользователя
+            bool right = authProvider.CheckPermission(Permission.LBWRK_COMMON_PERMISSION) ||
+                authProvider.LabWorks.Contains(id);
+
+            if (right)
             {
-                //проверка наличия прав пользователя
-                bool right = authProvider.CheckPermission(Permission.LBWRK_COMMON_PERMISSION) ||
-                    authProvider.LabWorks.Contains(id);
-
-                if (right)
-                {
-                    lab.ID = id;
-                    if (await lab.Update()) //обновление записи в БД
-                        return Ok();
-                    else
-                    {
-                        Logger logger = LogManager.GetCurrentClassLogger();
-                        logger.Error(string.Format("Лаб. работа \"{0}\" не была обновлена",id)); //запись лога с ошибкой
-                        return InternalServerError();
-                    }
-                }
+                lab.ID = id;
+                if (await lab.Update()) //обновление записи в БД
+                    return Request.CreateResponse(HttpStatusCode.OK);
                 else
-                    throw new HttpResponseException(HttpStatusCode.Forbidden);
+                    return Request.CreateResponse(HttpStatusCode.BadRequest);
             }
-            catch(Exception e)
-            {
-                Logger logger = LogManager.GetCurrentClassLogger();
-                logger.Fatal(e.ToString()); //запись лога с ошибкой
-                return InternalServerError();
-            }
+            else
+                return Request.CreateResponse(HttpStatusCode.Forbidden);
         }
 
 
@@ -570,7 +487,6 @@ namespace ElJournal.Controllers
 
 
         // удалить файл из лабораторной работы (автор, администратор)
-        //TODO: метод еще пустой
         [HttpDelete]
         [Route("api/LabWork/file/{id}")]
         public async Task<HttpResponseMessage> DeleteFile(string id)
@@ -578,92 +494,27 @@ namespace ElJournal.Controllers
             //идентификация пользователя
             string token = Request?.Headers?.Authorization?.Scheme;
             NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
+            if (authProvider == null)
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
 
-            if (authProvider != null)
+            LabWork work = await LabWork.GetInstanceAsync(id);
+            if(work == null)
+                return Request.CreateResponse(HttpStatusCode.BadRequest);
+
+            //проверка прав пользователя
+            bool authorRight = default(bool), commonRight = default(bool);
+            Parallel.Invoke(() => authorRight = authProvider.LabWorks.Contains(id),
+                () => commonRight = authProvider.CheckPermission(Permission.LBWRK_COMMON_PERMISSION));
+
+            if(commonRight || authorRight)
             {
-                try
-                {
-                    LabWork work = await LabWork.GetInstanceAsync(id);
-                    string path = work?.FileURL;
-                    string filename = work?.FileName;
-
-                    //проверка наличия прав на операцию
-                    bool commonRight = default(bool),
-                        authorRight = default(bool);
-                    Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.LBWRK_COMMON_PERMISSION),
-                                    () => authorRight = authProvider.LabWorks.Contains(id));
-
-                    if (string.IsNullOrEmpty(path) && string.IsNullOrEmpty(filename) && (commonRight || authorRight))
-                    {
-                        work.FileURL = null;
-                        work.FileName = null;
-                        if (await work.Update()) //удаление ссылки на файл из БД
-                        {
-                            try
-                            {
-                                File.Delete(path + filename); //удаление файла
-                                return Request.CreateResponse(HttpStatusCode.OK);
-                            }
-                            catch (Exception e)
-                            {
-                                Logger logger = LogManager.GetCurrentClassLogger();
-                                logger.Warn(e.Message);
-                            }
-                        }
-                        else
-                        {
-                            Logger logger = LogManager.GetCurrentClassLogger();
-                            logger.Warn(string.Format("Файл из лаб. работы \"{0}\" не был удален",id));
-                        }
-                        return Request.CreateResponse(HttpStatusCode.NotFound);
-
-                    }
-                    else
-                        return Request.CreateResponse(HttpStatusCode.Forbidden);
-                }
-                catch (Exception e)
-                {
-                    Logger logger = LogManager.GetCurrentClassLogger();
-                    logger.Fatal(e.ToString());
-                    return Request.CreateResponse(HttpStatusCode.InternalServerError);
-                }
+                if(await work.DetachFile())
+                    return Request.CreateResponse(HttpStatusCode.OK);
+                else
+                    return Request.CreateResponse(HttpStatusCode.BadRequest);
             }
             else
-                return Request.CreateResponse(HttpStatusCode.Unauthorized);
-        }
-
-
-
-
-        /// <summary>
-        /// получает предмет по id лаб. работы из плана
-        /// </summary>
-        /// <param name="labWorkPlan">лаб. работа из плана</param>
-        /// <returns></returns>
-        private async Task<string> getSubjectAsync(string labWorkPlan)
-        {
-            string sqlQuery = "select SubjectGroupSemesterID from LabWorksPlan where ID=@labWorkPlan";
-            var parameters = new Dictionary<string, string>();
-            parameters.Add("@labWorkPlan", labWorkPlan);
-            DB db = DB.GetInstance();
-            return await db.ExecuteScalarQueryAsync(sqlQuery, parameters);
-        }
-
-        /// <summary>
-        /// получает id лаб. работы из имени и доп. информации
-        /// </summary>
-        /// <param name="name">имя</param>
-        /// <param name="advanced">доп. информация</param>
-        /// <returns></returns>
-        private async Task<string> getLab(string name, string advanced)
-        {
-            DB db = DB.GetInstance();
-            string sqlQuery = "select ID from LabWorks " +
-                "where name=@name and advanced=@advanced";
-            var parameters = new Dictionary<string, string>();
-            parameters.Add("@name", name);
-            parameters.Add("@advanced", advanced);
-            return await db.ExecuteScalarQueryAsync(sqlQuery, parameters);
+                return Request.CreateResponse(HttpStatusCode.Forbidden);
         }
     }
 }
