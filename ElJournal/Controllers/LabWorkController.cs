@@ -169,6 +169,8 @@ namespace ElJournal.Controllers
                 return Request.CreateResponse(HttpStatusCode.Unauthorized);
 
             LabWork labWork = await LabWork.GetInstanceAsync(id);// получение лабораторной работы
+            if (labWork == null)
+                return Request.CreateResponse(HttpStatusCode.BadRequest);
 
             string path = labWork.FileURL + labWork.FileName; // физический путь к файлу
             try
@@ -235,7 +237,7 @@ namespace ElJournal.Controllers
                 LabWorkPlan plan = new LabWorkPlan
                 {
                     FlowSubjectId = subjectFlowId,
-                    labWork = lab
+                    Work = lab
                 };
                 if (await plan.Push())
                     return Request.CreateResponse(HttpStatusCode.Created);
@@ -350,7 +352,7 @@ namespace ElJournal.Controllers
                     return Request.CreateResponse(HttpStatusCode.Conflict);
             }
             else
-                throw new HttpResponseException(HttpStatusCode.Forbidden);
+                return Request.CreateResponse(HttpStatusCode.Forbidden);
         }
 
 

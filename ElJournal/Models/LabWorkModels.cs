@@ -17,9 +17,9 @@ namespace ElJournal.Models
         public string ID { get; set; }
         public string Name { get; set; }
         [JsonIgnore]
-        public string FileName { get; set; }
+        public virtual string FileName { get; set; }
         [JsonIgnore]
-        public string FileURL { get; set; }
+        public virtual string FileURL { get; set; }
         public string Advanced { get; set; }
         public string AuthorId { get; set; }
 
@@ -326,7 +326,7 @@ namespace ElJournal.Models
     public class LabWorkPlan
     {
         public string ID { get; set; }
-        public LabWork labWork { get; set; }
+        public virtual LabWork Work { get; set; }
         public string FlowSubjectId { get; set; }
 
         /// <summary>
@@ -350,7 +350,7 @@ namespace ElJournal.Models
                     return new LabWorkPlan
                     {
                         ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : null,
-                        labWork = obj.ContainsKey("LabWorkID") ? await LabWork.GetInstanceAsync(obj["LabWorkID"]) : null,
+                        Work = obj.ContainsKey("LabWorkID") ? await LabWork.GetInstanceAsync(obj["LabWorkID"]) : null,
                         FlowSubjectId = obj.ContainsKey("FlowSubjectID") ? obj["FlowSubjectID"].ToString() : null
                     };
                 }
@@ -378,7 +378,7 @@ namespace ElJournal.Models
                 labWorks.Add(new LabWorkPlan
                 {
                     ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : null,
-                    labWork = obj.ContainsKey("LabWorkID") ? await LabWork.GetLightInstanceAsync(obj["LabWorkID"]) : null,
+                    Work = obj.ContainsKey("LabWorkID") ? await LabWork.GetLightInstanceAsync(obj["LabWorkID"]) : null,
                     FlowSubjectId = obj.ContainsKey("FlowSubjectID") ? obj["FlowSubjectID"].ToString() : null
                 });
             }
@@ -413,12 +413,12 @@ namespace ElJournal.Models
         /// </summary>
         /// <param name="authorId">автор</param>
         /// <returns>True, если объект был добавлен в БД</returns>
-        public async Task<bool> Push()
+        public virtual async Task<bool> Push()
         {
             string procName = "dbo.AddLabWorkPlan";
             var parameters = new Dictionary<string, string>
             {
-                { "@labWorkId", labWork.ID },
+                { "@labWorkId", Work.ID },
                 { "@flowSubjId", FlowSubjectId }
             };
             try
@@ -438,7 +438,7 @@ namespace ElJournal.Models
         /// Удаление текущего объекта из БД
         /// </summary>
         /// <returns></returns>
-        public bool Delete()
+        public virtual bool Delete()
         {
             string sqlQuery = "delete from LabWorksPlan where ID=@ID";
             var parameters = new Dictionary<string, string>

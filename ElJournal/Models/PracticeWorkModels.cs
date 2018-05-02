@@ -1,4 +1,5 @@
 ﻿using ElJournal.DBInteract;
+using Newtonsoft.Json;
 using NLog;
 using System;
 using System.Collections.Generic;
@@ -13,6 +14,12 @@ namespace ElJournal.Models
 {
     public class PracticeWork : LabWork
     {
+        [JsonIgnore]
+        public override string FileName { get; set; }
+        [JsonIgnore]
+        public override string FileURL { get; set; }
+
+
         /// <summary>
         /// Возвращает практическую работу по указанному ID
         /// </summary>
@@ -451,6 +458,150 @@ namespace ElJournal.Models
         public override bool Delete()
         {
             string sqlQuery = "delete from PracticeWorkExecution where ID=@ID";
+            var parameters = new Dictionary<string, string>
+            {
+                { "@ID", ID }
+            };
+            try
+            {
+                DB db = DB.GetInstance();
+                int result = db.ExecInsOrDelQuery(sqlQuery, parameters);
+                if (result == 1)
+                {
+                    ID = null;
+                    return true;
+                }
+                else
+                    return false;
+            }
+            catch (Exception e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Fatal(e.ToString());
+                return false;
+            }
+        }
+    }
+
+    public class PracticeWorkPlan
+    {
+        public string ID { get; set; }
+        public virtual PracticeWork Work { get; set; }
+        public string FlowSubjectId { get; set; }
+
+
+        /// <summary>
+        /// Возвращает лабораторную работу в плане по указанному ID
+        /// </summary>
+        /// <param name="id">id лабораторной работы</param>
+        /// <returns></returns>
+        public static async Task<PracticeWorkPlan> GetInstanceAsync(string id)
+        {
+            string sqlQuery = "select * from LabWorksPlan where ID=@id";
+            var parameters = new Dictionary<string, string>
+            {
+                { "@id", id }
+            };
+            try
+            {
+                DB db = DB.GetInstance();
+                var obj = await db.ExecSelectQuerySingleAsync(sqlQuery, parameters);
+                if (obj != null)
+                {
+                    return new PracticeWorkPlan
+                    {
+                        ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : null,
+                        Work = obj.ContainsKey("LabWorkID") ? await LabWork.GetInstanceAsync(obj["LabWorkID"]) : null,
+                        FlowSubjectId = obj.ContainsKey("FlowSubjectID") ? obj["FlowSubjectID"].ToString() : null
+                    };
+                }
+                else
+                    return null;
+            }
+            catch (Exception e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Fatal(e.ToString());
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Пребразует коллекцию словарей в коллекцию моделей
+        /// </summary>
+        /// <param name="works"></param>
+        /// <returns></returns>
+        public static async Task<List<PracticeWorkPlan>> ToPracticeWork(List<Dictionary<string, dynamic>> works)
+        {
+            var practWorks = new List<PracticeWorkPlan>(works.Count);
+            foreach (var obj in works)
+            {
+                practWorks.Add(new PracticeWorkPlan
+                {
+                    ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : null,
+                    Work = obj.ContainsKey("LabWorkID") ? await LabWork.GetLightInstanceAsync(obj["LabWorkID"]) : null,
+                    FlowSubjectId = obj.ContainsKey("FlowSubjectID") ? obj["FlowSubjectID"].ToString() : null
+                });
+            }
+
+            return practWorks;
+        }
+
+        /// <summary>
+        /// Возвращает полный список пунктов планов практических работ
+        /// </summary>
+        /// <returns></returns>
+        public static async Task<List<PracticeWorkPlan>> GetCollectionAsync()
+        {
+            try
+            {
+                string sqlQuery = "select * from LabWorksPlan";
+                DB db = DB.GetInstance();
+                var result = await db.ExecSelectQueryAsync(sqlQuery);
+                var practWorks = await ToPracticeWork(result);
+                return practWorks;
+            }
+            catch (Exception e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Fatal(e.ToString());
+                return new List<PracticeWorkPlan>();
+            }
+        }
+
+        /// <summary>
+        /// Сохраняет текущий объект PracticeWorkPlan в БД
+        /// </summary>
+        /// <param name="authorId">автор</param>
+        /// <returns>True, если объект был добавлен в БД</returns>
+        public async Task<bool> Push()
+        {
+            string procName = "dbo.AddPractWorkPlan";
+            var parameters = new Dictionary<string, string>
+            {
+                { "@practWorkId", Work.ID },
+                { "@flowSubjId", FlowSubjectId }
+            };
+            try
+            {
+                DB db = DB.GetInstance();
+                return Convert.ToBoolean(await db.ExecStoredProcedureAsync(procName, parameters));
+            }
+            catch (Exception e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Fatal(e.ToString());
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Удаление текущего объекта из БД
+        /// </summary>
+        /// <returns></returns>
+        public bool Delete()
+        {
+            string sqlQuery = "delete from PracticeWorksPlan where ID=@ID";
             var parameters = new Dictionary<string, string>
             {
                 { "@ID", ID }
