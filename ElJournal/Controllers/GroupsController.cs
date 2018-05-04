@@ -61,8 +61,12 @@ namespace ElJournal.Controllers
             Response response = new Response();
             try
             {
-                response.Data = await Models.Group.GetInstanceAsync(id);
-                return Request.CreateResponse(HttpStatusCode.OK, response);
+                Models.Group group = await Models.Group.GetInstanceAsync(id);
+                response.Data = group;
+                if(group != null)
+                    return Request.CreateResponse(HttpStatusCode.OK, response);
+                else
+                    return Request.CreateResponse(HttpStatusCode.NoContent, response);
             }
             catch(Exception e)
             {

@@ -67,14 +67,14 @@ namespace ElJournal.Models
             {
                 DB db = DB.GetInstance();
                 var result = await db.ExecSelectQueryAsync(sqlQuery, parameters);
-                List<Student> students = Student.ToStudents(result);
+                List<Student> students = ToStudents(result);
                 return students;
             }
             catch(Exception e)
             {
                 Logger logger = LogManager.GetCurrentClassLogger();
                 logger.Fatal(e.ToString());
-                return new List<Student>(1);
+                return new List<Student>();
             }
 
         }
@@ -103,7 +103,7 @@ namespace ElJournal.Models
             {
                 Logger logger = LogManager.GetCurrentClassLogger();
                 logger.Fatal(e.ToString());
-                return new List<Student>(1);
+                return new List<Student>();
             }
 
         }
@@ -116,7 +116,7 @@ namespace ElJournal.Models
         public static List<Student> ToStudents(List<Dictionary<string, dynamic>> objects)
         {
             if (objects.Count == 0)
-                return null;
+                return new List<Student>();
             else
             {
                 var subjects = new List<Student>(objects.Count);

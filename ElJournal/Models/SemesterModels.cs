@@ -87,10 +87,41 @@ namespace ElJournal.Models
         public static async Task<List<Semester>> GetCollectionAsync()
         {
             string sqlQuery = "select ID,name from Semesters";
-            DB db = DB.GetInstance();
-            var result = await db.ExecSelectQueryAsync(sqlQuery);
-            var semesters = ToSemesters(result);
-            return semesters;
+            try
+            {
+                DB db = DB.GetInstance();
+                var result = await db.ExecSelectQueryAsync(sqlQuery);
+                var semesters = ToSemesters(result);
+                return semesters;
+            }
+            catch(Exception e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Fatal(e.ToString());
+                return new List<Semester>();
+            }
+        }
+
+        public static async Task<List<Semester>> GetCollectionAsync(string groupId)
+        {
+            string sqlQuery = "select ID,name from dbo.GetSemestersOfGroup(@groupid)";
+            var parameters = new Dictionary<string, string>
+            {
+                { "@groupId", groupId }
+            };
+            try
+            {
+                DB db = DB.GetInstance();
+                var result = await db.ExecSelectQueryAsync(sqlQuery, parameters);
+                var semesters = ToSemesters(result);
+                return semesters;
+            }
+            catch (Exception e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Fatal(e.ToString());
+                return new List<Semester>();
+            }
         }
 
         /// <summary>

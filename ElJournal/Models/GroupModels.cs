@@ -35,7 +35,8 @@ namespace ElJournal.Models
                 var result = await db.ExecSelectQuerySingleAsync(sqlQuery, parameters);
 
                 if (result != null)
-                    return new Group
+                {
+                    Group group = new Group
                     {
                         ID = result.ContainsKey("ID") ? result["ID"].ToString() : null,
                         Name = result.ContainsKey("name") ? result["name"].ToString() : null,
@@ -43,6 +44,10 @@ namespace ElJournal.Models
                         CuratorId = result.ContainsKey("curatorPersonID") ? result["curatorPersonID"].ToString() : null,
                         FacultyId = result.ContainsKey("FacultyID") ? result["FacultyID"].ToString() : null
                     };
+                    group.Semesters = await Semester.GetCollectionAsync(group.ID);
+                    return group;
+                }
+
                 else
                     return null;
             }

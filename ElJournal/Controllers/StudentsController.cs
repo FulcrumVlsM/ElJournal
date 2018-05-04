@@ -31,8 +31,9 @@ namespace ElJournal.Controllers
         public async Task<HttpResponseMessage> GetByUser(string personId)
         {
             Response response = new Response();
-            response.Data = await Student.GetStudents(personId);
-            if (response.Data.Count > 0)
+            var students = await Student.GetStudents(personId);
+            response.Data = students;
+            if (students.Count > 0)
                 return Request.CreateResponse(HttpStatusCode.OK, response);
             else
                 return Request.CreateResponse(HttpStatusCode.NotFound);

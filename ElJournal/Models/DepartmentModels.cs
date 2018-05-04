@@ -58,7 +58,7 @@ namespace ElJournal.Models
         public static List<Department> ToDepartments(List<Dictionary<string, dynamic>> departmentList)
         {
             if (departmentList.Count == 0)
-                return null;
+                return new List<Department>();
             else
             {
                 var departments = new List<Department>(departmentList.Count);
@@ -93,7 +93,7 @@ namespace ElJournal.Models
             {
                 Logger logger = LogManager.GetCurrentClassLogger();
                 logger.Fatal(e.ToString()); //запись лога с ошибкой
-                return null;
+                return new List<Department>();
             }
         }
 
