@@ -86,7 +86,7 @@ namespace ElJournal.Models
         /// <returns></returns>
         public static async Task<List<Semester>> GetCollectionAsync()
         {
-            string sqlQuery = "select ID,name from Semesters";
+            string sqlQuery = "select * from Semesters";
             try
             {
                 DB db = DB.GetInstance();
@@ -104,7 +104,7 @@ namespace ElJournal.Models
 
         public static async Task<List<Semester>> GetCollectionAsync(string groupId)
         {
-            string sqlQuery = "select ID,name from dbo.GetSemestersOfGroup(@groupid)";
+            string sqlQuery = "select * from dbo.GetSemestersOfGroup(@groupid)";
             var parameters = new Dictionary<string, string>
             {
                 { "@groupId", groupId }
