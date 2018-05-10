@@ -119,7 +119,7 @@ namespace ElJournal.Controllers
             if(commonRight || teacherRight)
             {
                 if (await lesson.Push())
-                    return Request.CreateResponse(HttpStatusCode.Created);
+                    return Request.CreateResponse(HttpStatusCode.OK);
                 else
                     return Request.CreateResponse(HttpStatusCode.BadRequest);
             }
@@ -156,7 +156,7 @@ namespace ElJournal.Controllers
             {
                 lesson.StudentId = student.ID;
                 if (await lesson.Push())
-                    return Request.CreateResponse(HttpStatusCode.Created);
+                    return Request.CreateResponse(HttpStatusCode.OK);
                 else
                     return Request.CreateResponse(HttpStatusCode.BadRequest);
             }

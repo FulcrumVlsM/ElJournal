@@ -46,6 +46,8 @@ namespace ElJournal.Controllers
 
 
         // вернуть все аккаунту (только публичные данные)
+        [HttpGet]
+        [Route("api/Account")]
         public async Task<HttpResponseMessage> Get([FromUri]string person = null, [FromUri]string name = null)
         {
             Response response = new Response();
@@ -109,7 +111,7 @@ namespace ElJournal.Controllers
                 account.Secret == person.Passport_id)
             {
                 if (await account.Push())
-                    return Request.CreateResponse(HttpStatusCode.Created);
+                    return Request.CreateResponse(HttpStatusCode.OK);
                 else
                     return Request.CreateResponse(HttpStatusCode.BadRequest);
             }

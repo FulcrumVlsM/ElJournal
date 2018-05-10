@@ -104,7 +104,7 @@ namespace ElJournal.Controllers
                 if(commonRight || departRight)
                 {
                     if (await subject.Push())
-                        return Request.CreateResponse(HttpStatusCode.Created);
+                        return Request.CreateResponse(HttpStatusCode.OK);
                     else
                         return Request.CreateResponse(HttpStatusCode.BadRequest);
                 }
@@ -142,7 +142,7 @@ namespace ElJournal.Controllers
             if (commonRight || departRight)
             {
                 if (await flowSubject.Push())
-                    return Request.CreateResponse(HttpStatusCode.Created);
+                    return Request.CreateResponse(HttpStatusCode.OK);
                 else
                     return Request.CreateResponse(HttpStatusCode.BadRequest);
             }

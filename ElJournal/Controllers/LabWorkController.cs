@@ -227,7 +227,7 @@ namespace ElJournal.Controllers
                     Work = lab
                 };
                 if (await plan.Push())
-                    return Request.CreateResponse(HttpStatusCode.Created);
+                    return Request.CreateResponse(HttpStatusCode.OK);
                 else
                     return Request.CreateResponse(HttpStatusCode.Conflict);
             }
@@ -262,7 +262,7 @@ namespace ElJournal.Controllers
             if (commonRight || subjectRight)
             {
                 if (await exLab.Push())
-                    return Request.CreateResponse(HttpStatusCode.Created);
+                    return Request.CreateResponse(HttpStatusCode.OK);
                 else
                     return Request.CreateResponse(HttpStatusCode.Conflict);
             }
@@ -334,7 +334,7 @@ namespace ElJournal.Controllers
                 lab.FileName = filename;
 
                 if (await lab.AttachFile(fileArray))
-                    return Request.CreateResponse(HttpStatusCode.Created);
+                    return Request.CreateResponse(HttpStatusCode.OK);
                 else
                     return Request.CreateResponse(HttpStatusCode.Conflict);
             }

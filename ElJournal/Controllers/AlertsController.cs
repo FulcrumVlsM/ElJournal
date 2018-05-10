@@ -138,7 +138,7 @@ namespace ElJournal.Controllers
             {
                 alert.AuthorID = authProvider.PersonId;
                 if (await alert.Push())
-                    return Request.CreateResponse(HttpStatusCode.Created);
+                    return Request.CreateResponse(HttpStatusCode.OK);
                 else
                     return Request.CreateResponse(HttpStatusCode.BadRequest);
             }
@@ -151,7 +151,7 @@ namespace ElJournal.Controllers
         // добавление новостного уведомления
         [HttpPost]
         [Route("api/Alerts/news")]
-        public async Task<dynamic> PostNews([FromBody]Alert alert)
+        public async Task<HttpResponseMessage> PostNews([FromBody]Alert alert)
         {
             //идентификация пользователя
             string token = Request?.Headers?.Authorization?.Scheme; //id пользователя из заголовка http
@@ -167,7 +167,7 @@ namespace ElJournal.Controllers
                 alert.FlowSubjectId = null;
                 alert.AuthorID = authProvider.PersonId;
                 if (await alert.Push())
-                    return Request.CreateResponse(HttpStatusCode.Created);
+                    return Request.CreateResponse(HttpStatusCode.OK);
                 else
                     return Request.CreateResponse(HttpStatusCode.BadRequest);
             }
