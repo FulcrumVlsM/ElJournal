@@ -77,10 +77,7 @@ namespace ElJournal.Controllers
                 list = list.FindAll(x => x.FlowSubjectId == flowSubject);
 
             response.Data = list;
-            if (list.Count > 0)
-                return Request.CreateResponse(HttpStatusCode.OK, response);
-            else
-                return Request.CreateResponse(HttpStatusCode.NoContent);
+            return Request.CreateResponse(HttpStatusCode.OK, response);
         }
 
         // POST: api/Students

@@ -23,10 +23,7 @@ namespace ElJournal.Controllers
             Response response = new Response();
             var departments = await Department.GetCollectionAsync();
             response.Data = departments;
-            if (departments.Count > 0)
-                return Request.CreateResponse(HttpStatusCode.OK, response);
-            else
-                return Request.CreateResponse(HttpStatusCode.NoContent, response);
+            return Request.CreateResponse(HttpStatusCode.OK, response);
         }
             
 

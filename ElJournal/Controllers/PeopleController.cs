@@ -20,7 +20,6 @@ namespace ElJournal.Controllers
 
         //история запросов: ip клиента - время последнего запроса
         private static Dictionary<string, DateTime> _clientsHistory = new Dictionary<string, DateTime>(30);
-        private static int _timeOut = 10; //промежуток отправки запросов
 
         // получить список всех пользователей (все)
         // получить пользователя по ID (все рег. пользователи, админ видит всю инфу)
@@ -53,10 +52,7 @@ namespace ElJournal.Controllers
             }
             people = (people.Take(count)).ToList(); //отбор указанного количества
             response.Data = people;
-            if (people.Count > 0)
-                return Request.CreateResponse(HttpStatusCode.OK, response);
-            else
-                return Request.CreateResponse(HttpStatusCode.NoContent, response);
+            return Request.CreateResponse(HttpStatusCode.OK, response);
 
         }
 

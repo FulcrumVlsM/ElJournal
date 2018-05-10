@@ -55,10 +55,7 @@ namespace ElJournal.Controllers
             works = (works.Take(count)).ToList();
 
             response.Data = works;
-            if (works.Count > 0)
-                return Request.CreateResponse(HttpStatusCode.OK, response);
-            else
-                return Request.CreateResponse(HttpStatusCode.NoContent, response);
+            return Request.CreateResponse(HttpStatusCode.OK, response);
         }
 
 
@@ -76,11 +73,7 @@ namespace ElJournal.Controllers
 
             var works = await PracticeWork.GetCollectionAsync(authProvider.PersonId);
             response.Data = works;
-
-            if (works.Count > 0)
-                return Request.CreateResponse(HttpStatusCode.OK, response);
-            else
-                return Request.CreateResponse(HttpStatusCode.NoContent, response);
+            return Request.CreateResponse(HttpStatusCode.OK, response);
         }
 
 
@@ -93,10 +86,7 @@ namespace ElJournal.Controllers
             var list = await PracticeWorkPlan.GetCollectionAsync();
             list = list.FindAll(x => x.FlowSubjectId == flowSubjectId);
             response.Data = list;
-            if (list.Count > 0)
-                return Request.CreateResponse(HttpStatusCode.OK, response);
-            else
-                return Request.CreateResponse(HttpStatusCode.NoContent, response);
+            return Request.CreateResponse(HttpStatusCode.OK, response);
         }
 
 

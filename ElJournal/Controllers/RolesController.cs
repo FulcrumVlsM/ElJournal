@@ -19,10 +19,7 @@ namespace ElJournal.Controllers
             Response response = new Response();
             var roles = await Role.GetCollectionAsync();
             response.Data = roles;
-            if (roles.Count > 0)
-                return Request.CreateResponse(HttpStatusCode.OK, response);
-            else
-                return Request.CreateResponse(HttpStatusCode.NoContent, response);
+            return Request.CreateResponse(HttpStatusCode.OK, response);
         }
     }
 }

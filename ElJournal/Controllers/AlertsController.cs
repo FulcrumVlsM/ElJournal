@@ -46,10 +46,7 @@ namespace ElJournal.Controllers
                 alerts = alerts.FindAll(x => x.Opened ?? false); // без авторизации остаются только публичные записи
 
             response.Data = alerts;
-            if (alerts.Count > 0)
-                return Request.CreateResponse(HttpStatusCode.OK, response);
-            else
-                return Request.CreateResponse(HttpStatusCode.NoContent, response);
+            return Request.CreateResponse(HttpStatusCode.OK, response);
 
         }
 

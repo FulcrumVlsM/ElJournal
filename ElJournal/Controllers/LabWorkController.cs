@@ -61,10 +61,7 @@ namespace ElJournal.Controllers
             }
 
             response.Data = works;
-            if (works.Count > 0)
-                return Request.CreateResponse(HttpStatusCode.OK, response);
-            else
-                return Request.CreateResponse(HttpStatusCode.NoContent, response);
+            return Request.CreateResponse(HttpStatusCode.OK, response);
         }
 
 
@@ -83,11 +80,7 @@ namespace ElJournal.Controllers
 
             var works = await LabWork.GetCollectionAsync(authProvider.PersonId);
             response.Data = works;
-
-            if(works.Count>0)
-                return Request.CreateResponse(HttpStatusCode.OK, response);
-            else
-                return Request.CreateResponse(HttpStatusCode.NoContent, response);
+            return Request.CreateResponse(HttpStatusCode.OK, response);
         }
 
 
@@ -101,10 +94,7 @@ namespace ElJournal.Controllers
             var list = await LabWorkPlan.GetCollectionAsync();
             list = list.FindAll(x => x.FlowSubjectId == flowSubjectId);
             response.Data = list;
-            if (list.Count > 0)
-                return Request.CreateResponse(HttpStatusCode.OK, response);
-            else
-                return Request.CreateResponse(HttpStatusCode.NoContent, response);
+            return Request.CreateResponse(HttpStatusCode.OK, response);
         }
 
 
@@ -133,10 +123,7 @@ namespace ElJournal.Controllers
             });
 
             response.Data = exLabs;
-            if(exLabs.Count>0)
-                return Request.CreateResponse(HttpStatusCode.OK, response);
-            else
-                return Request.CreateResponse(HttpStatusCode.NoContent, response);
+            return Request.CreateResponse(HttpStatusCode.OK, response);
         }
 
 

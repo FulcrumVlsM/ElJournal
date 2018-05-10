@@ -26,10 +26,7 @@ namespace ElJournal.Controllers
         {
             Response response = new Response();
             response.Data = await Semester.GetCollectionAsync();
-            if (response.Data.Count > 0)
-                return Request.CreateResponse(HttpStatusCode.OK, response);
-            else
-                return Request.CreateResponse(HttpStatusCode.NoContent, response);
+            return Request.CreateResponse(HttpStatusCode.OK, response);
         }
 
         // GET: api/Semester/5

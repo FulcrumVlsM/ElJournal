@@ -68,7 +68,7 @@ namespace ElJournal.DBInteract
                     }
                     conn.Close();
                 }
-                catch(SqlException e)
+                catch(Exception e)
                 {
                     //TODO: add log
                     conn.Close();
@@ -114,7 +114,7 @@ namespace ElJournal.DBInteract
                     }
                     conn.Close();
                 }
-                catch(SqlException e)
+                catch(Exception e)
                 {
                     //TODO: add log
                     conn.Close();

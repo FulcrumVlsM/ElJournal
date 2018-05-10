@@ -61,10 +61,7 @@ namespace ElJournal.Controllers
             }
 
             response.Data = accounts;
-            if (accounts.Count > 0)
-                return Request.CreateResponse(HttpStatusCode.OK, response);
-            else
-                return Request.CreateResponse(HttpStatusCode.NoContent, response);
+            return Request.CreateResponse(HttpStatusCode.OK, response);
         }
 
 

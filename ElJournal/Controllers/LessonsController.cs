@@ -40,10 +40,7 @@ namespace ElJournal.Controllers
 
             var lessons = await Lesson.GetCollectionAsync(subject.ID);
             response.Data = lessons;
-            if (lessons.Count > 0)
-                return Request.CreateResponse(HttpStatusCode.OK, response);
-            else
-                return Request.CreateResponse(HttpStatusCode.NoContent, response);
+            return Request.CreateResponse(HttpStatusCode.OK, response);
         }
 
 
@@ -61,10 +58,7 @@ namespace ElJournal.Controllers
 
             var plan = await LessonPlan.GetCollectionAsync(subject.ID);
             response.Data = plan;
-            if (plan.Count > 0)
-                return Request.CreateResponse(HttpStatusCode.OK, response);
-            else
-                return Request.CreateResponse(HttpStatusCode.NoContent, response);
+            return Request.CreateResponse(HttpStatusCode.OK, response);
         }
 
 
@@ -76,10 +70,7 @@ namespace ElJournal.Controllers
             Response response = new Response();
             var types = await LessonType.GetCollectionAsync();
             response.Data = types;
-            if (types.Count > 0)
-                return Request.CreateResponse(HttpStatusCode.OK, response);
-            else
-                return Request.CreateResponse(HttpStatusCode.NoContent, response);
+            return Request.CreateResponse(HttpStatusCode.OK, response);
         }
 
 
@@ -91,10 +82,7 @@ namespace ElJournal.Controllers
             Response response = new Response();
             var times = await LessonTime.GetCollectionAsync();
             response.Data = times;
-            if (times.Count > 0)
-                return Request.CreateResponse(HttpStatusCode.OK, response);
-            else
-                return Request.CreateResponse(HttpStatusCode.NoContent, response);
+            return Request.CreateResponse(HttpStatusCode.OK, response);
         }
 
 
@@ -106,10 +94,7 @@ namespace ElJournal.Controllers
             Response response = new Response();
             var lessons = await Lesson.GetCollectionAsync(flowSubjectId, studentId);
             response.Data = lessons;
-            if (lessons.Count > 0)
-                return Request.CreateResponse(HttpStatusCode.OK, response);
-            else
-                return Request.CreateResponse(HttpStatusCode.NoContent, response);
+            return Request.CreateResponse(HttpStatusCode.OK, response);
         }
 
 

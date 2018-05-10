@@ -80,10 +80,7 @@ namespace ElJournal.Controllers
                 flowsSubjects = flowsSubjects.FindAll(x => x.SemesterId == semester);
 
             response.Data = flowsSubjects;
-            if (flowsSubjects.Count > 0)
-                return Request.CreateResponse(HttpStatusCode.OK, response);
-            else
-                return Request.CreateResponse(HttpStatusCode.NoContent, response);
+            return Request.CreateResponse(HttpStatusCode.OK, response);
         }
 
 

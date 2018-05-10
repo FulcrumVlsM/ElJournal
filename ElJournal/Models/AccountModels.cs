@@ -11,7 +11,6 @@ namespace ElJournal.Models
     public class Account
     {
         public string ID { get; set; }
-        public string Login { get; set; }
         public string Password { get; set; }
         public string Email { get; set; }
         public string Alias { get; set; }
@@ -40,7 +39,6 @@ namespace ElJournal.Models
                         ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : null,
                         PersonID = obj.ContainsKey("PersonID") ? obj["PersonID"].ToString() : null,
                         User = obj.ContainsKey("PersonID") ? await Person.GetInstanceAsync(obj["PersonID"]) : null,
-                        Login = obj.ContainsKey("login") ? obj["login"].ToString() : null,
                         Password = obj.ContainsKey("password") ? obj["password"].ToString() : null,
                         Email = obj.ContainsKey("email") ? obj["email"].ToString() : null,
                         Alias = obj.ContainsKey("alias") ? obj["alias"].ToString() : null
@@ -114,7 +112,6 @@ namespace ElJournal.Models
                         ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : null,
                         PersonID = obj.ContainsKey("PersonID") ? obj["PersonID"].ToString() : null,
                         User = obj.ContainsKey("PersonID") ? await Person.GetPublicInstanceAsync(obj["PersonID"]) : null,
-                        Login = obj.ContainsKey("login") ? obj["login"].ToString() : null,
                         Password = obj.ContainsKey("password") ? obj["password"].ToString() : null,
                         Email = obj.ContainsKey("email") ? obj["email"].ToString() : null,
                         Alias = obj.ContainsKey("alias") ? obj["alias"].ToString() : null
@@ -155,7 +152,6 @@ namespace ElJournal.Models
             var parameters = new Dictionary<string, string>
             {
                 { "@personId",  PersonID},
-                { "@login", Login },
                 { "@password", Password },
                 { "@email", Email },
                 { "@alias", Alias }
@@ -234,7 +230,7 @@ namespace ElJournal.Models
 
     public class LogIn
     {
-        public string Login { get; set; }
+        public string Email { get; set; }
         public string Password { get; set; }
 
         public async Task<Account> Authorize()
@@ -242,7 +238,7 @@ namespace ElJournal.Models
             string sqlQuery = "select dbo.CheckAuth(@login,@password)";
             var parameters = new Dictionary<string, string>
             {
-                { "@login", Login },
+                { "@email", Email },
                 { "@password", Password }
             };
             try
