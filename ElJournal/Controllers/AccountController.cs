@@ -124,7 +124,7 @@ namespace ElJournal.Controllers
         [Route("api/Account")]
         public async Task<HttpResponseMessage> Put([FromBody]NewAccount account)
         {
-            Account realAccount = await Account.GetInstanceAsync(account?.Login, account?.Password);
+            Account realAccount = await Account.GetInstanceAsync(account?.Email, account?.Password);
             if (realAccount == null)
                 return Request.CreateResponse(HttpStatusCode.BadRequest);
 

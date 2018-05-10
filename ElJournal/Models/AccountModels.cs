@@ -3,6 +3,7 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Web;
 
@@ -16,6 +17,8 @@ namespace ElJournal.Models
         public string Alias { get; set; }
         public string PersonID { get; set; }
         public Person User { get; set; }
+
+        protected string _emailPattern = @"^[-a-z0-9!#$%&'*+/=?^_`{|}~]+(?:\.[-a-z0-9!#$%&'*+/=?^_`{|}~]+)*@(?:[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?\.)*(?:aero|arpa|asia|biz|cat|com|coop|edu|gov|info|int|jobs|mil|mobi|museum|name|net|org|pro|tel|travel|[a-z][a-z])$";
 
         /// <summary>
         /// Возвращает аккаунт по ID
@@ -77,7 +80,6 @@ namespace ElJournal.Models
                         ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : null,
                         PersonID = obj.ContainsKey("PersonID") ? obj["PersonID"].ToString() : null,
                         User = obj.ContainsKey("PersonID") ? await Person.GetInstanceAsync(obj["PersonID"]) : null,
-                        Login = obj.ContainsKey("login") ? obj["login"].ToString() : null,
                         Password = obj.ContainsKey("password") ? obj["password"].ToString() : null,
                         Email = obj.ContainsKey("email") ? obj["email"].ToString() : null,
                         Alias = obj.ContainsKey("alias") ? obj["alias"].ToString() : null
@@ -143,7 +145,7 @@ namespace ElJournal.Models
         }
 
         /// <summary>
-        /// Сохраняет текущий объект Person в БД
+        /// Сохраняет текущий объект Account в БД
         /// </summary>
         /// <returns>True, если объект был добавлен в БД</returns>
         public async Task<bool> Push()
@@ -159,7 +161,12 @@ namespace ElJournal.Models
             try
             {
                 DB db = DB.GetInstance();
-                return Convert.ToBoolean(await db.ExecStoredProcedureAsync(procName, parameters));
+
+                Regex regex = new Regex(_emailPattern);
+                if (regex.IsMatch(Email))
+                    return Convert.ToBoolean(await db.ExecStoredProcedureAsync(procName, parameters));
+                else
+                    return false;
             }
             catch (Exception e)
             {
@@ -186,7 +193,11 @@ namespace ElJournal.Models
             try
             {
                 DB db = DB.GetInstance();
-                return Convert.ToBoolean(await db.ExecStoredProcedureAsync(procName, parameters));
+                Regex regex = new Regex(_emailPattern);
+                if (regex.IsMatch(Email))
+                    return Convert.ToBoolean(await db.ExecStoredProcedureAsync(procName, parameters));
+                else
+                    return false;
             }
             catch (Exception e)
             {
