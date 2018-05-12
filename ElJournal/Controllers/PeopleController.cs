@@ -84,6 +84,24 @@ namespace ElJournal.Controllers
         }
 
 
+        [HttpGet]
+        [Route("api/People/me")]
+        public async Task<HttpResponseMessage> GetMe()
+        {
+            Response response = new Response();
+
+            //идентификация пользователя
+            string token = Request?.Headers?.Authorization?.Scheme;
+            NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
+            if (authProvider == null)
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
+
+            Person me = await Person.GetPublicInstanceAsync(authProvider.PersonId);
+            response.Data = me;
+            return Request.CreateResponse(HttpStatusCode.OK, response);
+        }
+
+
         // POST: api/Persons
         // добавить пользователя (администратор)
         public async Task<HttpResponseMessage> Post([FromBody]Person person)

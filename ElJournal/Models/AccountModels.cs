@@ -246,7 +246,7 @@ namespace ElJournal.Models
 
         public async Task<Account> Authorize()
         {
-            string sqlQuery = "select dbo.CheckAuth(@login,@password)";
+            string sqlQuery = "select dbo.CheckAuth(@email,@password)";
             var parameters = new Dictionary<string, string>
             {
                 { "@email", Email },
