@@ -112,7 +112,8 @@ namespace ElJournal.Models
             {
                 { "@name", Name },
                 { "@departmentId", DepartmentID },
-                { "@info", Info }
+                { "@info", Info },
+                { "@cypher", Cypher }
             };
             try
             {
@@ -138,6 +139,7 @@ namespace ElJournal.Models
             {
                 { "@ID", ID },
                 { "@name", Name },
+                { "@cypher", Cypher },
                 { "@info", Info },
                 { "@DepartmentID", DepartmentID }
             };

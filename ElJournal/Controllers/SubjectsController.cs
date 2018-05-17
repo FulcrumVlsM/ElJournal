@@ -83,6 +83,22 @@ namespace ElJournal.Controllers
             return Request.CreateResponse(HttpStatusCode.OK, response);
         }
 
+        
+        //получить предмет-поток
+        [HttpGet]
+        [Route("api/Subjects/flow/{flowSubjectId}")]
+        public async Task<HttpResponseMessage> GetSubjectFlow(string flowSubjectId)
+        {
+            Response response = new Response();
+
+            FlowSubject fSubject = await FlowSubject.GetInstanceAsync(flowSubjectId);
+            if (fSubject == null)
+                return Request.CreateResponse(HttpStatusCode.NotFound);
+
+            response.Data = fSubject;
+            return Request.CreateResponse(HttpStatusCode.OK, response);
+        }
+
 
         // POST: api/Subjects
         //добавить новый предмет (администратор, администратор кафедры)
@@ -97,8 +113,8 @@ namespace ElJournal.Controllers
                 //првоерка наличия прав доступа
                 bool commonRight = default(bool),
                     departRight = default(bool);
-                Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.GROUP_COMMON_PERMISSION),
-                    () => departRight = authProvider.CheckPermission(Permission.GROUP_PERMISSION) ?
+                Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.DEPARTMENT_COMMON_PERMISSION),
+                    () => departRight = authProvider.CheckPermission(Permission.DEPARTMENT_PERMISSION) ?
                                          authProvider.Departments.Contains(subject.DepartmentID) : false);
 
                 if(commonRight || departRight)
@@ -135,8 +151,8 @@ namespace ElJournal.Controllers
             //проверка наличия прав доступа
             bool commonRight = default(bool),
                 departRight = default(bool);
-            Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.GROUP_COMMON_PERMISSION),
-                () => departRight = authProvider.CheckPermission(Permission.GROUP_PERMISSION) ?
+            Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.DEPARTMENT_COMMON_PERMISSION),
+                () => departRight = authProvider.CheckPermission(Permission.DEPARTMENT_PERMISSION) ?
                                      authProvider.Departments.Contains(subject.DepartmentID) : false);
 
             if (commonRight || departRight)
@@ -166,8 +182,8 @@ namespace ElJournal.Controllers
                 //првоерка наличия прав доступа
                 bool commonRight = default(bool),
                     departRight = default(bool);
-                Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.GROUP_COMMON_PERMISSION),
-                    () => departRight = authProvider.CheckPermission(Permission.GROUP_PERMISSION) ?
+                Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.DEPARTMENT_COMMON_PERMISSION),
+                    () => departRight = authProvider.CheckPermission(Permission.DEPARTMENT_PERMISSION) ?
                                          authProvider.Departments.Contains(subject.DepartmentID) : false);
 
                 if (commonRight || departRight)
@@ -205,8 +221,8 @@ namespace ElJournal.Controllers
             //првоерка наличия прав доступа
             bool commonRight = default(bool),
                 departRight = default(bool);
-            Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.GROUP_COMMON_PERMISSION),
-                () => departRight = authProvider.CheckPermission(Permission.GROUP_PERMISSION) ?
+            Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.DEPARTMENT_COMMON_PERMISSION),
+                () => departRight = authProvider.CheckPermission(Permission.DEPARTMENT_PERMISSION) ?
                                      authProvider.Departments.Contains(subject.DepartmentID) : false);
 
             if (commonRight || departRight)
@@ -245,8 +261,8 @@ namespace ElJournal.Controllers
             //проверка наличия прав доступа
             bool commonRight = default(bool),
                 departRight = default(bool);
-            Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.GROUP_COMMON_PERMISSION),
-                () => departRight = authProvider.CheckPermission(Permission.GROUP_PERMISSION) ?
+            Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.DEPARTMENT_COMMON_PERMISSION),
+                () => departRight = authProvider.CheckPermission(Permission.DEPARTMENT_PERMISSION) ?
                                      authProvider.Departments.Contains(subject.DepartmentID) : false);
 
             if (commonRight || departRight)

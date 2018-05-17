@@ -345,6 +345,8 @@ namespace ElJournal.Controllers
 
         // PUT: api/LabWork/5
         // измененить лабораторную работу (автор, администратор)
+        [HttpPut]
+        [Route("api/LabWork/{id}")]
         public async Task<HttpResponseMessage> Put(string id, [FromBody]LabWork lab)
         {
             //идентификация пользователя

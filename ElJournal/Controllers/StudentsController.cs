@@ -23,7 +23,7 @@ namespace ElJournal.Controllers
         // добавить студента на поток по предмету (администратор кафедры, администратор)
         // удалить студента из потока по предмету (администратор, администратор кафедры)
 
-
+        
         // GET: api/Students/user/5
         // получить id студента для всех семестров по указанному пользователю (все)
         [HttpGet]
@@ -79,6 +79,23 @@ namespace ElJournal.Controllers
             response.Data = list;
             return Request.CreateResponse(HttpStatusCode.OK, response);
         }
+
+
+        // получить студента
+        [HttpGet]
+        [Route("api/Students/{id}")]
+        public async Task<HttpResponseMessage> GetById(string id)
+        {
+            Response response = new Response();
+
+            Student student = await Student.GetInstanceAsync(id);
+            if (student == null)
+                return Request.CreateResponse(HttpStatusCode.NotFound);
+
+            response.Data = student;
+            return Request.CreateResponse(HttpStatusCode.OK, response);
+        }
+
 
         // POST: api/Students
         public async Task<HttpResponseMessage> Post([FromBody]Student student)
@@ -150,6 +167,8 @@ namespace ElJournal.Controllers
 
 
         // DELETE: api/Students/5
+        [HttpDelete]
+        [Route("api/Students/{id}")]
         public async Task<HttpResponseMessage> Delete(string id)
         {
             //идентификация пользователя

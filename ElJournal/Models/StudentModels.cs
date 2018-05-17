@@ -23,7 +23,7 @@ namespace ElJournal.Models
         /// <returns></returns>
         public static async Task<Student> GetInstanceAsync(string id)
         {
-            string sqlQuery = "select * from StudentsGroupsSemesters where ID=@id";
+            string sqlQuery = "select * from dbo.GetSubjectGroupSemester() where ID=@id";
             var parameters = new Dictionary<string, string>
             {
                 { "@id", id }
@@ -155,6 +155,8 @@ namespace ElJournal.Models
                 if (!string.IsNullOrEmpty(groupSemester))
                 {
                     parameters.Add("@groupSemesterId", groupSemester);
+                    parameters.Remove("@groupId");
+                    parameters.Remove("@semesterId");
                     return Convert.ToBoolean(await db.ExecStoredProcedureAsync(procName, parameters));
                 }
                 return false;
