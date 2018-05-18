@@ -57,15 +57,16 @@ namespace ElJournal.Controllers
         // GET: api/Students/subject/5
         // получить записи на потоки по предметам по указанной группе и семестру (все)
         [HttpGet]
-        [Route("api/Students/flow/{semesterId}")]
-        public async Task<HttpResponseMessage> GetStudentsFlow(string semesterId, [FromUri]string student = null,
+        [Route("api/Students/flow/{semesterId}/{groupId}")]
+        public async Task<HttpResponseMessage> GetStudentsFlow(string semesterId, string groupId, [FromUri]string student = null,
             string flowSubject = null)
         {
             Response response = new Response();
-            string sqlQuery = "select * from dbo.GetStudentsFlowSubjects(@semesterId)";
+            string sqlQuery = "select * from dbo.GetStudentsFlowSubjects(@semesterId, @groupId)";
             var parameters = new Dictionary<string, string>
             {
-                {"@semesterId", semesterId }
+                {"@semesterId", semesterId },
+                { "@groupId", groupId }
             };
             DB db = DB.GetInstance();
             var result = await db.ExecSelectQueryAsync(sqlQuery, parameters);
@@ -78,6 +79,28 @@ namespace ElJournal.Controllers
 
             response.Data = list;
             return Request.CreateResponse(HttpStatusCode.OK, response);
+        }
+
+
+        [HttpGet]
+        [Route("api/Students/flow/{flowSubjectId}")]
+        public async Task<HttpResponseMessage> GetStudentsFlow(string flowSubjectId)
+        {
+            Response response = new Response();
+            string sqlQuery = "select * from dbo.GetAllStudentsFlowSubjects(@flowSubjectId)";
+            var parameters = new Dictionary<string, string>
+            {
+                {"@flowSubjectId", flowSubjectId }
+            };
+            DB db = DB.GetInstance();
+            var result = await db.ExecSelectQueryAsync(sqlQuery, parameters);
+            List<StudentFlowSubject> list = StudentFlowSubject.ToStudentFlowSubject(result);
+
+            response.Data = list;
+            if (list.Count > 0)
+                return Request.CreateResponse(HttpStatusCode.OK, response);
+            else
+                return Request.CreateResponse(HttpStatusCode.NoContent, response);
         }
 
 
