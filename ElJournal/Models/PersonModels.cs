@@ -132,7 +132,7 @@ namespace ElJournal.Models
             {
                 Logger logger = LogManager.GetCurrentClassLogger();
                 logger.Fatal(e.ToString()); //запись лога с ошибкой
-                return null;
+                return new List<Faculty>();
             }
         }
 
@@ -153,7 +153,7 @@ namespace ElJournal.Models
             {
                 Logger logger = LogManager.GetCurrentClassLogger();
                 logger.Fatal(e.ToString()); //запись лога с ошибкой
-                return null;
+                return new List<Department>();
             }
         }
 
@@ -165,7 +165,7 @@ namespace ElJournal.Models
         public static List<Person> ToPeople(List<Dictionary<string, dynamic>> personList)
         {
             if (personList.Count == 0)
-                return new List<Person>(0);
+                return new List<Person>();
             else
             {
                 var departments = new List<Person>(personList.Count);
@@ -204,7 +204,7 @@ namespace ElJournal.Models
             {
                 Logger logger = LogManager.GetCurrentClassLogger();
                 logger.Fatal(e.ToString()); //запись лога с ошибкой
-                return null;
+                return new List<Person>();
             }
         }
 

@@ -101,8 +101,8 @@ namespace ElJournal.Controllers
         // GET: api/LabWork/exec/5/5
         // получить список выполненных студентом лаб работ по предмету (все рег. пользователи)
         [HttpGet]
-        [Route("api/LabWork/exec/{studentFlowId}/{subjectFlowId}")]
-        public async Task<HttpResponseMessage> GetExec(string studentFlowId, string subjectFlowId)
+        [Route("api/LabWork/exec/{studentFlowId}")]
+        public async Task<HttpResponseMessage> GetExec(string studentFlowId)
         {
             Response response = new Response();
             string token = Request?.Headers?.Authorization?.Scheme; //токен пользователя
@@ -110,17 +110,7 @@ namespace ElJournal.Controllers
             if (authProvider == null)
                 return Request.CreateResponse(HttpStatusCode.Unauthorized);
 
-            //поиск предмета
-            FlowSubject fSubject = await FlowSubject.GetInstanceAsync(subjectFlowId);
-            if(fSubject == null)
-                return Request.CreateResponse(HttpStatusCode.BadRequest);
-
             var exLabs = await ExecutedLabWork.GetCollectionAsync(studentFlowId);
-            exLabs = exLabs.FindAll(x =>
-            {
-                LabWorkPlan plan = (LabWorkPlan.GetInstanceAsync(x.PlanId)).Result;
-                return plan.FlowSubjectId == fSubject.ID;
-            });
 
             response.Data = exLabs;
             return Request.CreateResponse(HttpStatusCode.OK, response);

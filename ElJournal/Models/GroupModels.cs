@@ -86,7 +86,7 @@ namespace ElJournal.Models
             {
                 Logger logger = LogManager.GetCurrentClassLogger();
                 logger.Fatal(e.ToString());
-                return null;
+                return new List<Group>();
             }
         }
 
@@ -98,7 +98,7 @@ namespace ElJournal.Models
         public static List<Group> ToGroups(List<Dictionary<string, dynamic>> groupList)
         {
             if (groupList.Count == 0)
-                return null;
+                return new List<Group>();
             else
             {
                 var groups = new List<Group>(groupList.Count);

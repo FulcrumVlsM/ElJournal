@@ -563,13 +563,13 @@ namespace ElJournal.Models
         {
             try
             {
-                string sqlQuery = "select * from LabWorksExecution where StudentFlowSemesterID=@studentId";
+                string sqlQuery = "select * from LabWorksExecution where StudentFlowSubjectID=@studentId";
                 var parameters = new Dictionary<string, string>
                 {
                     { "@studentId", studentFlowId }
                 };
                 DB db = DB.GetInstance();
-                var result = await db.ExecSelectQueryAsync(sqlQuery);
+                var result = await db.ExecSelectQueryAsync(sqlQuery, parameters);
                 var labWorks = ToLabWork(result);
                 return labWorks;
             }
@@ -577,7 +577,7 @@ namespace ElJournal.Models
             {
                 Logger logger = LogManager.GetCurrentClassLogger();
                 logger.Fatal(e.ToString());
-                return null;
+                return new List<ExecutedLabWork>();
             }
         }
 

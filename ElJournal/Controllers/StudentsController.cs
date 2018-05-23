@@ -33,10 +33,7 @@ namespace ElJournal.Controllers
             Response response = new Response();
             var students = await Student.GetStudents(personId);
             response.Data = students;
-            if (students.Count > 0)
-                return Request.CreateResponse(HttpStatusCode.OK, response);
-            else
-                return Request.CreateResponse(HttpStatusCode.NotFound);
+            return Request.CreateResponse(HttpStatusCode.OK, response);
         }
 
         // GET: api/Students/group/5/5
@@ -47,10 +44,7 @@ namespace ElJournal.Controllers
         {
             Response response = new Response();
             response.Data = await Student.GetGroupStudent(semesterId, groupId);
-            if(response.Data.Count>0)
-                return Request.CreateResponse(HttpStatusCode.OK, response);
-            else
-                return Request.CreateResponse(HttpStatusCode.NotFound);
+            return Request.CreateResponse(HttpStatusCode.OK, response);
         }
 
 
@@ -82,25 +76,35 @@ namespace ElJournal.Controllers
         }
 
 
+        //получить записи о регистрации на предмет по указанному предмету и/или студенту
+        [HttpGet]
+        [Route("api/Students/flow")]
+        public async Task<HttpResponseMessage> GetStudentsFlow([FromUri]string flowSubjectId = null, 
+            [FromUri]string studentId = null)
+        {
+            if (string.IsNullOrEmpty(flowSubjectId) && string.IsNullOrEmpty(studentId))
+                return Request.CreateResponse(HttpStatusCode.BadRequest);
+
+            Response response = new Response();
+            var studentsFlow = await StudentFlowSubject.GetCollectionAsync();
+            if (!string.IsNullOrEmpty(flowSubjectId))
+                studentsFlow = studentsFlow.FindAll(x => x.FlowSubjectId == flowSubjectId);
+            if (!string.IsNullOrEmpty(studentId))
+                studentsFlow = studentsFlow.FindAll(x => x.StudentId == studentId);
+            response.Data = studentsFlow;
+            return Request.CreateResponse(HttpStatusCode.OK, response);
+        }
+
+
+        // получить зарегестрированных студентов на указанный предмет
         [HttpGet]
         [Route("api/Students/flow/{flowSubjectId}")]
         public async Task<HttpResponseMessage> GetStudentsFlow(string flowSubjectId)
         {
             Response response = new Response();
-            string sqlQuery = "select * from dbo.GetAllStudentsFlowSubjects(@flowSubjectId)";
-            var parameters = new Dictionary<string, string>
-            {
-                {"@flowSubjectId", flowSubjectId }
-            };
-            DB db = DB.GetInstance();
-            var result = await db.ExecSelectQueryAsync(sqlQuery, parameters);
-            List<StudentFlowSubject> list = StudentFlowSubject.ToStudentFlowSubject(result);
-
-            response.Data = list;
-            if (list.Count > 0)
-                return Request.CreateResponse(HttpStatusCode.OK, response);
-            else
-                return Request.CreateResponse(HttpStatusCode.NoContent, response);
+            var studentsFlow = (await StudentFlowSubject.GetCollectionAsync()).FindAll(x => x.FlowSubjectId == flowSubjectId);
+            response.Data = studentsFlow;
+            return Request.CreateResponse(HttpStatusCode.OK, response);
         }
 
 
