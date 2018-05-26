@@ -200,6 +200,9 @@ namespace ElJournal.Models
         /// <returns></returns>
         public virtual async Task<bool> AttachFile(byte[] fileArray, string fileName)
         {
+            if (string.IsNullOrWhiteSpace(fileName))
+                return false;
+
             try
             {
                 FileURL = ConfigurationManager.AppSettings["FileStorage"];

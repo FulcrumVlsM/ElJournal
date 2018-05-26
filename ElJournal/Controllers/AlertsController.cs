@@ -72,7 +72,7 @@ namespace ElJournal.Controllers
         // возвращает типы уведомлений
         [HttpGet]
         [Route("api/Alerts/types")]
-        public async Task<HttpResponseMessage> GetType()
+        public async Task<HttpResponseMessage> GetTypes()
         {
             Response response = new Response();
             var types = await AlertType.GetCollectionAsync();

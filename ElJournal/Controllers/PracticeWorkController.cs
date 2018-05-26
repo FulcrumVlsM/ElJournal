@@ -322,9 +322,8 @@ namespace ElJournal.Controllers
                 var file = provider.Contents[0];
                 var filename = file.Headers.ContentDisposition.FileName.Trim('\"');
                 byte[] fileArray = await file.ReadAsByteArrayAsync();
-                work.FileName = filename;
 
-                if (await work.AttachFile(fileArray))
+                if (await work.AttachFile(fileArray, filename))
                     return Request.CreateResponse(HttpStatusCode.Created);
                 else
                     return Request.CreateResponse(HttpStatusCode.Conflict);
