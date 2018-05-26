@@ -10,13 +10,13 @@ using ElJournal.Providers;
 using ElJournal.DBInteract;
 using System.Text.RegularExpressions;
 using NLog;
+using System.IO;
+using System.Net.Http.Headers;
 
 namespace ElJournal.Controllers
 {
     public partial class CourseWorkController : ApiController
     {
-        // получить список всех курсовых работ (администратор)
-        // получить курсовую работу по id (все рег. пользователи)
         // получить курсовые работы по предмету
         // получить статус выполнения курсовой работы студентом (да, нет)
         // добавить курсовую работу (администратор, преподаватель)
@@ -28,8 +28,31 @@ namespace ElJournal.Controllers
         // удалить курсовую работу из плана (администратор, преподаватель)
 
 
+        // получить весь список курсовых (администратор)
+        // получить конкретную курсовую по id (все)
+        // добавить курсовую работу (преподаватель, администратор)
+        // изменить курсовую работу (автор, администратор)
+        // удалить курсовую работу (администратор)
+
+        // получить файл, прикрепленный к курсовой работе (все рег. пользователи)
+        // добавить файл к курсовой работе (автор, администратор)
+
+        //получить список моих курсовых работ (все рег. пользователи)
+
+        // получить темы курсовых по определенному предмету (все)
+        // добавить курсовую в план (автор, администратор)
+        // удалить курсовую работу из плана (преподаватель, администратор)
+
+        // получить статус выполнения студентом курсовой работы (все рег. пользователи)
+        // установить курсовую работу студенту (администратор, преподаватель)
+        // поставить отметки о выполнении курсовой работы (администратор, преподаватель)
+        // удалить установленную курсовую для студента (администратор, преподаватель)
+
+
         // GET: api/CourseWork?name=abc
-        // получить список всех курсовых работ (администратор)
+        // получить весь список курсовых (администратор)
+        [HttpGet]
+        [Route("api/CourseWork")]
         public async Task<HttpResponseMessage> Get([FromUri]string name = null)
         {
             Response response = new Response();
@@ -37,71 +60,116 @@ namespace ElJournal.Controllers
             //идентификация пользователя
             string token = Request?.Headers?.Authorization?.Scheme;
             NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
-
-            if (authProvider != null) //если идентификация прошла успешно
-            {
-                if (authProvider.CheckPermission(Permission.CRSWRK_COMMON_PERMISSION)) //если есть права доступа
-                {
-                    try
-                    {
-                        if (string.IsNullOrEmpty(name))// если шаблон для поиска не задавался
-                            response.Data = await CourseWork.GetCollectionAsync();
-                        else // если шаблон поиска был задан
-                        {
-                            Regex regex = new Regex(name);
-                            response.Data = (await CourseWork.GetCollectionAsync())
-                                .Where(x => regex.IsMatch(x.Name) || regex.IsMatch(x.Advanced)).ToList();
-                        }
-                        return Request.CreateResponse(HttpStatusCode.OK, response);
-                    }
-                    catch (Exception e)
-                    {
-                        Logger logger = LogManager.GetCurrentClassLogger();
-                        logger.Info(e.ToString());//запись лога с ошибкой
-                        return Request.CreateResponse(HttpStatusCode.InternalServerError);
-                    }
-                }
-                else
-                    return Request.CreateResponse(HttpStatusCode.Forbidden);
-            }
-            else
+            if (authProvider == null)
                 return Request.CreateResponse(HttpStatusCode.Unauthorized);
+
+            var works = await CourseWork.GetCollectionAsync();
+            if (!string.IsNullOrEmpty(name)) // если шаблон для поиска не задавался
+            {
+                Regex regex = new Regex(name);
+                works = works.FindAll(x => regex.IsMatch(x.Name) || regex.IsMatch(x.Advanced));
+            }
+
+            response.Data = works;
+            return Request.CreateResponse(HttpStatusCode.OK, response);
+        }
+
+
+        //получить список моих курсовых работ (все рег. пользователи)
+        [HttpGet]
+        [Route("api/CourseWork/my")]
+        public async Task<HttpResponseMessage> GetMy()
+        {
+            Response response = new Response();
+            
+            //идентификация пользователя
+            string token = Request?.Headers?.Authorization?.Scheme;
+            NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
+            if (authProvider == null) //если пользователь не отправил токен получить ошибку 401
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
+
+            var works = await CourseWork.GetCollectionAsync(authProvider.PersonId);
+            response.Data = works;
+            return Request.CreateResponse(HttpStatusCode.OK, response);
         }
 
 
         // GET: api/CourseWork/5
-        // получить курсовую работу по id (все рег. пользователи)
+        // получить конкретную курсовую по id (все)
         [HttpGet]
         [Route("api/CourseWork/{id}")]
         public async Task<HttpResponseMessage> GetById(string id)
         {
             Response response = new Response();
 
-            //идентификация пользователя
+            var work = await CourseWork.GetInstanceAsync(id);
+            response.Data = work;
+
+            if (work != null)
+                return Request.CreateResponse(HttpStatusCode.OK, response);
+            else
+                return Request.CreateResponse(HttpStatusCode.NotFound);
+        }
+
+
+        // получить файл, прикрепленный к курсовой работе (все рег. пользователи)
+        [HttpGet]
+        [Route("api/CourseWork/file/{id}")]
+        public async Task<HttpResponseMessage> GetFile(string id)
+        {
+            //авторизация пользователя
             string token = Request?.Headers?.Authorization?.Scheme;
             NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
-
-            if (authProvider != null)
-            {
-                response.Data = await CourseWork.GetInstanceAsync(id);
-                return Request.CreateResponse(HttpStatusCode.OK, response);
-            }
-            else
+            if (authProvider == null)
                 return Request.CreateResponse(HttpStatusCode.Unauthorized);
+
+            CourseWork courseWork = await CourseWork.GetInstanceAsync(id);// получение лабораторной работы
+            if (courseWork == null)
+                return Request.CreateResponse(HttpStatusCode.BadRequest);
+
+            string path = courseWork.FileURL + courseWork.FileName; // физический путь к файлу
+            try
+            {
+                if (string.IsNullOrEmpty(path))//если к работе не приложен файл, сгенерируется exception
+                    throw new FileNotFoundException("This coursework don't have attachment file");
+
+                var stream = new FileStream(path, FileMode.Open);
+
+                //отправка файла
+                var result = new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StreamContent(stream)
+                };
+                result.Content.Headers.ContentDisposition = new ContentDispositionHeaderValue("attachment")
+                {
+                    FileName = courseWork.FileName
+                };
+                result.Content.Headers.ContentType =
+                    new MediaTypeHeaderValue("application/octet-stream");
+
+                return result;
+            }
+            catch (FileNotFoundException e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Error(e.ToString()); //запись лога с ошибкой
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+            }
         }
 
 
         // GET: api/CourseWork/BySubject/5
         // получить курсовые работы по предмету (все)
         [HttpGet]
-        [Route("api/CourseWork/BySubject/{id}")]
-        public async Task<HttpResponseMessage> GetBySubj(string id)
+        [Route("api/CourseWork/BySubject/{flowSubjectId}")]
+        public async Task<HttpResponseMessage> GetBySubj(string flowSubjectId)
         {
             Response response = new Response();
+            //TODO: я остановился здесь
             string sqlQuery = "select * from dbo.PlannedCourseWorks(@subjectId)";
             var parameters = new Dictionary<string, string>
             {
-                {"subjectId",id }
+                {"subjectId",flowSubjectId }
             };
 
             try
@@ -124,7 +192,7 @@ namespace ElJournal.Controllers
         // получить статус выполнения курсовой работы студентом (да, нет) (все рег. пользователи)
         //TODO: метод еще пустой
         [HttpGet]
-        [Route("api/CourseWork/state/{studentId}")]
+        [Route("api/CourseWork/exec/{studentId}")]
         public async Task<HttpResponseMessage> GetState(string studentId)
         {
             Response response = new Response();
@@ -144,53 +212,72 @@ namespace ElJournal.Controllers
         }
 
 
-        // POST: api/CourseWork
-        // добавить курсовую работу (администратор, преподаватель)
+        // добавить курсовую работу (преподаватель, администратор)
+        [HttpPost]
+        [Route("api/CourseWork")]
         public async Task<HttpResponseMessage> Post([FromBody]CourseWork courseWork)
         {
-            Response response = new Response();
-
             //идентификация пользователя
             string token = Request?.Headers?.Authorization?.Scheme;
             NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
             if (authProvider == null) //если пользователь не отправил токен получить ошибку 401
                 return Request.CreateResponse(HttpStatusCode.Unauthorized);
 
-            try
-            {
-                //проверка наличия прав у пользователя
-                bool commonRight = default(bool),
-                    teacherRight = default(bool);
-                Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.CRSWRK_COMMON_PERMISSION),
-                                () => teacherRight = authProvider.CheckPermission(Permission.CRSWRK_PERMISSION));
+            //проверка наличия прав у пользователя
+            bool commonRight = default(bool),
+                teacherRight = default(bool);
+            Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.CRSWRK_COMMON_PERMISSION),
+                            () => teacherRight = authProvider.CheckPermission(Permission.CRSWRK_PERMISSION));
 
-                if (commonRight || teacherRight)
-                {
-                    if (await courseWork.Push(authProvider.PersonId)) //добавление работы в БД
-                    {
-                        var id = await getCWork(courseWork.Name, courseWork.Advanced);
-                        response.Data = new { ID = id };
-                        return Request.CreateResponse(HttpStatusCode.Created, response);
-                    }
-                    else
-                    {
-                        Logger logger = LogManager.GetCurrentClassLogger();
-                        logger.Warn(string.Format("Не удалось добавить лабораторную работу. User: {0}, name: {1}",
-                            authProvider.PersonId, courseWork.Name)); //запись лога с ошибкой
-                        return Request.CreateResponse(HttpStatusCode.Conflict);
-                    }
-                }
+            if (commonRight || teacherRight)
+            {
+                if (await courseWork.Push(authProvider.PersonId)) //добавление работы в БД
+                    return Request.CreateResponse(HttpStatusCode.Created);
                 else
-                    return Request.CreateResponse(HttpStatusCode.Forbidden);
+                    return Request.CreateResponse(HttpStatusCode.Conflict);
             }
-            catch (Exception e)
+            else
+                return Request.CreateResponse(HttpStatusCode.Forbidden);
+        }
+
+
+        // добавить файл к курсовой работе (автор, администратор)
+        [HttpPost]
+        [Route("api/CourseWork/file/{id}")]
+        public async Task<HttpResponseMessage> Post(string id)
+        {
+            //идентификация пользователя
+            string token = Request?.Headers?.Authorization?.Scheme;
+            NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
+            if (authProvider == null)
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
+
+            //поиск лабораторной работы
+            CourseWork cwork = await CourseWork.GetInstanceAsync(id);
+            if (cwork == null)
+                return Request.CreateResponse(HttpStatusCode.BadRequest);
+
+            //проверка прав пользователя
+            bool authorRight = default(bool), commonRight = default(bool);
+            Parallel.Invoke(() => authorRight = authProvider.LabWorks.Contains(id),
+                () => commonRight = authProvider.CheckPermission(Permission.LBWRK_COMMON_PERMISSION));
+
+            if (Request.Content.IsMimeMultipartContent() && (commonRight || authorRight))
             {
-                Logger logger = LogManager.GetCurrentClassLogger();
-                logger.Fatal(e.ToString()); //запись лога с ошибкой
-                return Request.CreateResponse(HttpStatusCode.InternalServerError);
+                //запись файла
+                var provider = new MultipartMemoryStreamProvider();
+                await Request.Content.ReadAsMultipartAsync(provider);
+                var file = provider.Contents[0];
+                var filename = file.Headers.ContentDisposition.FileName.Trim('\"');
+                byte[] fileArray = await file.ReadAsByteArrayAsync();
+
+                if (await cwork.AttachFile(fileArray, filename))
+                    return Request.CreateResponse(HttpStatusCode.OK);
+                else
+                    return Request.CreateResponse(HttpStatusCode.Conflict);
             }
-
-
+            else
+                return Request.CreateResponse(HttpStatusCode.Forbidden);
         }
 
 
@@ -254,8 +341,8 @@ namespace ElJournal.Controllers
         // POST: api/CourseWork/Exec/5/5/5
         // установить курсовую работу студенту (администратор, преподаватель)
         [HttpPost]
-        [Route("api/CourseWork/exec/{subjectId}/{workId}/{studentId}")]
-        public async Task<HttpResponseMessage> PostExec(string subjectId, string workId, string studentId)
+        [Route("api/CourseWork/exec/{flowSubjectId}/{workId}/{studentId}")]
+        public async Task<HttpResponseMessage> PostExec(string flowSubjectId, string workId, string studentId)
         {
             string procName = "dbo.MountCourseWorkToExec"; //хранимая процедура, выполняющая необходимые действия
 
@@ -272,13 +359,13 @@ namespace ElJournal.Controllers
                         teacherRight = default(bool);
                     Parallel.Invoke(() => commonRight = authProvider.CheckPermission(Permission.CRSWRK_COMMON_PERMISSION),
                         () => teacherRight = authProvider.CheckPermission(Permission.CRSWRK_PERMISSION) ?
-                                             authProvider.FlowsSubjects.Contains(subjectId) : false);
+                                             authProvider.FlowsSubjects.Contains(flowSubjectId) : false);
 
                     DB db = DB.GetInstance();
                     var parameters = new Dictionary<string, string>
                     {
                         {"@studentId",studentId },
-                        {"@subjectId",subjectId },
+                        {"@subjectId",flowSubjectId },
                         {"@workId",workId }
                     };
 
@@ -305,7 +392,7 @@ namespace ElJournal.Controllers
         // POST: api/CourseWork/State/5
         // поставить отметку о выполнении курсовой работы (администратор, преподаватель)
         [HttpPost]
-        [Route("api/CourseWork/state/{studentId}")]
+        [Route("api/CourseWork/exec/{studentId}")]
         public async Task<HttpResponseMessage> PostState(string studentId, [FromBody]CourseWorkExecution advanced,
             [FromUri]bool state=true)
         {
@@ -359,7 +446,7 @@ namespace ElJournal.Controllers
 
 
         // PUT: api/CourseWork/5
-        // изменить данные о курсовой работе (администратор, создатель)
+        // изменить курсовую работу (автор, администратор)
         [HttpPut]
         [Route("api/CourseWork/{id}")]
         public async Task<HttpResponseMessage> Put(string id, [FromBody]CourseWork courseWork)
@@ -368,38 +455,25 @@ namespace ElJournal.Controllers
             string token = Request?.Headers?.Authorization?.Scheme;
             NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
 
-            try
-            {
-                //проверка наличия прав пользователя
-                bool right = authProvider.CheckPermission(Permission.LBWRK_COMMON_PERMISSION) ||
-                    authProvider.CourseWorks.Contains(id);
+            //проверка наличия прав пользователя
+            bool right = authProvider.CheckPermission(Permission.LBWRK_COMMON_PERMISSION) ||
+                authProvider.CourseWorks.Contains(id);
 
-                if (right)
-                {
-                    courseWork.ID = id;
-                    if (await courseWork.Update()) //обновление записи в БД
-                        return Request.CreateResponse(HttpStatusCode.OK);
-                    else
-                    {
-                        Logger logger = LogManager.GetCurrentClassLogger();
-                        logger.Error(string.Format("Лаб. работа \"{0}\" не была обновлена", id)); //запись лога с ошибкой
-                        return Request.CreateResponse(HttpStatusCode.NotFound);
-                    }
-                }
-                else
-                    return Request.CreateResponse(HttpStatusCode.Forbidden);
-            }
-            catch (Exception e)
+            if (right)
             {
-                Logger logger = LogManager.GetCurrentClassLogger();
-                logger.Fatal(e.ToString()); //запись лога с ошибкой
-                return Request.CreateResponse(HttpStatusCode.InternalServerError);
+                courseWork.ID = id;
+                if (await courseWork.Update()) //обновление записи в БД
+                    return Request.CreateResponse(HttpStatusCode.OK);
+                else
+                    return Request.CreateResponse(HttpStatusCode.NotFound);
             }
+            else
+                return Request.CreateResponse(HttpStatusCode.Forbidden);
         }
 
 
         // DELETE: api/CourseWork/5
-        // удалить курсовую работу (администратор, создатель)
+        // удалить курсовую работу (администратор)
         [HttpDelete]
         [Route("api/CourseWork/{id}")]
         public async Task<HttpResponseMessage> Delete(string id)
@@ -409,28 +483,46 @@ namespace ElJournal.Controllers
             NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
             CourseWork cWork = new CourseWork { ID = id };
 
-            try
+            if (authProvider?.CheckPermission(Permission.LBWRK_COMMON_PERMISSION) ?? false)//проверка прав на операцию
             {
-                if (authProvider?.CheckPermission(Permission.LBWRK_COMMON_PERMISSION) ?? false)//проверка прав на операцию
-                {
-                    if (cWork.Delete()) //удаление
-                        return Request.CreateResponse(HttpStatusCode.OK);
-                    else
-                    {
-                        Logger logger = LogManager.GetCurrentClassLogger();
-                        logger.Warn(string.Format("При удалении лаб. работы \"{0}\" произошла ошибка.", id)); //запись лога с ошибкой
-                        return Request.CreateResponse(HttpStatusCode.BadRequest);
-                    }
-                }
+                if (cWork.Delete()) //удаление
+                    return Request.CreateResponse(HttpStatusCode.OK);
                 else
-                    return Request.CreateResponse(HttpStatusCode.Forbidden);
+                    return Request.CreateResponse(HttpStatusCode.BadRequest);
             }
-            catch (Exception e)
+            else
+                return Request.CreateResponse(HttpStatusCode.Forbidden);
+        }
+
+
+        [HttpDelete]
+        [Route("api/CourseWork/file/{id}")]
+        public async Task<HttpResponseMessage> DeleteFile(string id)
+        {
+            //идентификация пользователя
+            string token = Request?.Headers?.Authorization?.Scheme;
+            NativeAuthProvider authProvider = await NativeAuthProvider.GetInstance(token);
+            if (authProvider == null)
+                return Request.CreateResponse(HttpStatusCode.Unauthorized);
+
+            CourseWork work = await CourseWork.GetInstanceAsync(id);
+            if (work == null)
+                return Request.CreateResponse(HttpStatusCode.BadRequest);
+
+            //проверка прав пользователя
+            bool authorRight = default(bool), commonRight = default(bool);
+            Parallel.Invoke(() => authorRight = authProvider.LabWorks.Contains(id),
+                () => commonRight = authProvider.CheckPermission(Permission.LBWRK_COMMON_PERMISSION));
+
+            if (commonRight || authorRight)
             {
-                Logger logger = LogManager.GetCurrentClassLogger();
-                logger.Fatal(e.ToString()); //запись лога с ошибкой
-                return Request.CreateResponse(HttpStatusCode.InternalServerError);
+                if (await work.DetachFile())
+                    return Request.CreateResponse(HttpStatusCode.OK);
+                else
+                    return Request.CreateResponse(HttpStatusCode.BadRequest);
             }
+            else
+                return Request.CreateResponse(HttpStatusCode.Forbidden);
         }
 
 
@@ -489,26 +581,6 @@ namespace ElJournal.Controllers
                 return Request.CreateResponse(HttpStatusCode.Unauthorized);
         }
 
-
-
-        /// <summary>
-        /// получает id курс. работы из имени и доп. информации
-        /// </summary>
-        /// <param name="name">имя</param>
-        /// <param name="advanced">доп. информация</param>
-        /// <returns></returns>
-        private async Task<string> getCWork(string name, string advanced)
-        {
-            DB db = DB.GetInstance();
-            string sqlQuery = "select ID from CourseWorks " +
-                "where name=@name and advanced=@advanced";
-            var parameters = new Dictionary<string, string>
-            {
-                { "@name", name },
-                { "@advanced", advanced }
-            };
-            return await db.ExecuteScalarQueryAsync(sqlQuery, parameters);
-        }
 
         private async Task<string> getSubjectOfCourseWorkExec(string CWorkExecId)
         {

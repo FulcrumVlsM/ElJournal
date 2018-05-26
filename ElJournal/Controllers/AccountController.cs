@@ -69,6 +69,8 @@ namespace ElJournal.Controllers
 
         // GET: api/Account
         // вернуть данные аккаунта по ID (администратор)
+        [HttpGet]
+        [Route("api/Account/{id}")]
         public async Task<HttpResponseMessage> Get(string id)
         {
             Response response = new Response();

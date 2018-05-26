@@ -1,6 +1,11 @@
 ﻿using ElJournal.DBInteract;
+using Newtonsoft.Json;
+using NLog;
 using System;
 using System.Collections.Generic;
+using System.Configuration;
+using System.Data.SqlClient;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Web;
@@ -13,8 +18,11 @@ namespace ElJournal.Models
         public string Name { get; set; }
         public string Description { get; set; }
         public string Advanced { get; set; }
+        [JsonIgnore]
         public string FileURL { get; set; }
+        [JsonIgnore]
         public string FileName { get; set; }
+        public string AuthorId { get; set; }
 
 
         /// <summary>
@@ -33,8 +41,10 @@ namespace ElJournal.Models
                 return new CourseWork
                 {
                     ID = result.ContainsKey("ID") ? result["ID"].ToString() : string.Empty,
+                    AuthorId = result.ContainsKey("authorID") ? result["authorID"].ToString() : string.Empty,
                     Name = result.ContainsKey("name") ? result["name"].ToString() : string.Empty,
                     FileName = result.ContainsKey("fileName") ? result["fileName"].ToString() : string.Empty,
+                    FileURL = result.ContainsKey("fileURL") ? result["fileURL"].ToString() : string.Empty,
                     Advanced = result.ContainsKey("advanced") ? result["advanced"].ToString() : string.Empty,
                     Description = result.ContainsKey("description") ? result["description"].ToString() : string.Empty
                 };
@@ -49,23 +59,46 @@ namespace ElJournal.Models
         /// <returns></returns>
         public static async Task<List<CourseWork>> GetCollectionAsync()
         {
-            string sqlQuery = "select * from CourseWorks";
-            DB db = DB.GetInstance();
-            var result = await db.ExecSelectQueryAsync(sqlQuery);
-            var labWorks = new List<CourseWork>(result.Count);
-            foreach (var obj in result)
+            try
             {
-                labWorks.Add(new CourseWork
-                {
-                    ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : string.Empty,
-                    Name = obj.ContainsKey("name") ? obj["name"].ToString() : string.Empty,
-                    FileName = obj.ContainsKey("fileName") ? obj["fileName"].ToString() : string.Empty,
-                    FileURL = obj.ContainsKey("fileURL") ? obj["fileURL"].ToString() : string.Empty,
-                    Advanced = obj["advanced"].ToString()
-                });
+                string sqlQuery = "select * from CourseWorks";
+                DB db = DB.GetInstance();
+                var result = await db.ExecSelectQueryAsync(sqlQuery);
+                return ToCourseWork(result);
             }
+            catch(Exception e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Fatal(e.ToString());
+                return new List<CourseWork>();
+            }
+        }
 
-            return labWorks;
+        /// <summary>
+        /// Возвращает полный список курсовых работ
+        /// </summary>
+        /// <param name="authorId">id автора курсовых работ</param>
+        /// <returns></returns>
+        public static async Task<List<CourseWork>> GetCollectionAsync(string authorId)
+        {
+            string sqlQuery = "select * from CourseWorks where authorID=@authorId";
+            var parameters = new Dictionary<string, string>()
+            {
+                { "@authorID", authorId }
+            };
+
+            try
+            {
+                DB db = DB.GetInstance();
+                var result = await db.ExecSelectQueryAsync(sqlQuery);
+                return ToCourseWork(result);
+            }
+            catch(Exception e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Fatal(e.ToString());
+                return new List<CourseWork>();
+            }
         }
 
         /// <summary>
@@ -81,6 +114,7 @@ namespace ElJournal.Models
                 labWorks.Add(new CourseWork
                 {
                     ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : string.Empty,
+                    AuthorId = obj.ContainsKey("authorID") ? obj["authorID"].ToString() : string.Empty,
                     Name = obj.ContainsKey("name") ? obj["name"].ToString() : string.Empty,
                     FileName = obj.ContainsKey("fileName") ? obj["fileName"].ToString() : string.Empty,
                     FileURL = obj.ContainsKey("fileURL") ? obj["fileURL"].ToString() : string.Empty,
@@ -141,15 +175,67 @@ namespace ElJournal.Models
         /// Сохраняет указанное имя и URL файла как присоединенный файл
         /// </summary>
         /// <returns></returns>
-        public async Task<bool> AttachFile()
+        public async Task<bool> AttachFile(byte[] fileArray, string fileName)
         {
-            string procName = "dbo.UpdateCourseWork";
-            var parameters = new Dictionary<string, string>();
-            DB db = DB.GetInstance();
-            parameters.Add("@ID", ID);
-            parameters.Add("@fileName", FileName);
-            parameters.Add("@fileURL", FileURL);
-            return Convert.ToBoolean(await db.ExecStoredProcedureAsync(procName, parameters));
+            try
+            {
+                FileURL = ConfigurationManager.AppSettings["FileStorage"];
+                FileName = fileName;
+                using (FileStream fs = new FileStream(FileURL + FileName, FileMode.CreateNew))
+                {
+                    await fs.WriteAsync(fileArray, 0, fileArray.Length);
+                }
+
+                string procName = "dbo.UpdateCourseWork";
+                var parameters = new Dictionary<string, string>();
+                DB db = DB.GetInstance();
+                parameters.Add("@ID", ID);
+                parameters.Add("@fileName", FileName);
+                parameters.Add("@fileURL", FileURL);
+                return Convert.ToBoolean(await db.ExecStoredProcedureAsync(procName, parameters));
+            }
+            catch (IOException)// если файл с таким именем есть на сервере, возникнет конфликт
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Warn(string.Format("Конфликт имени файла при добавлении на сервер. {0}", FileName)); //запись лога с ошибкой
+                return false;
+            }
+            catch (SqlException e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Fatal(e.ToString());
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// удаляет запись о присоединенном файле
+        /// </summary>
+        /// <returns></returns>
+        public virtual async Task<bool> DetachFile()
+        {
+            if (string.IsNullOrWhiteSpace(FileURL) || string.IsNullOrWhiteSpace(FileName))
+                return false;
+
+            string path = FileURL;
+            string name = FileName;
+            FileURL = string.Empty;
+            FileName = string.Empty;
+
+            try
+            {
+                File.Delete(path + name);
+                if (await Update())
+                    return true;
+                else
+                    throw new FileNotFoundException("Не удалось обновить в БД, что файл был удален", name);
+            }
+            catch (Exception e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Warn(e.ToString());
+                return false;
+            }
         }
 
         /// <summary>

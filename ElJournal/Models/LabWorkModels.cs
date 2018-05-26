@@ -198,14 +198,12 @@ namespace ElJournal.Models
         /// Сохраняет указанное имя и URL файла как присоединенный файл
         /// </summary>
         /// <returns></returns>
-        public virtual async Task<bool> AttachFile(byte[] fileArray)
+        public virtual async Task<bool> AttachFile(byte[] fileArray, string fileName)
         {
-            if (string.IsNullOrWhiteSpace(FileURL) || string.IsNullOrWhiteSpace(FileName))
-                return false;
-
             try
             {
                 FileURL = ConfigurationManager.AppSettings["FileStorage"];
+                FileName = fileName;
                 using (FileStream fs = new FileStream(FileURL + FileName, FileMode.CreateNew))
                 {
                     await fs.WriteAsync(fileArray, 0, fileArray.Length);
