@@ -33,8 +33,10 @@ namespace ElJournal.Controllers
         // удалить практическую работу (администратор)
         // удалить файл из практической работы (автор, администратор)
 
-        // GET: api/PracticeWork
+        
         // получить весь список практических (все рег. пользователи)
+        [HttpGet]
+        [Route("api/PracticeWork")]
         public async Task<HttpResponseMessage> Get([FromUri]string name = null, [FromUri]int count = 50)
         {
             Response response = new Response();
@@ -92,8 +94,8 @@ namespace ElJournal.Controllers
 
         // получить список выполненных студентом практ работ по предмету (все рег. пользователи)
         [HttpGet]
-        [Route("api/PracticeWork/exec/{studentFlowId}/{subjectFlowId}")]
-        public async Task<HttpResponseMessage> GetExec(string studentFlowId, string subjectFlowId)
+        [Route("api/PracticeWork/exec/{studentFlowId}")]
+        public async Task<HttpResponseMessage> GetExec(string studentFlowId)
         {
             Response response = new Response();
             string token = Request?.Headers?.Authorization?.Scheme; //токен пользователя
@@ -101,17 +103,12 @@ namespace ElJournal.Controllers
             if (authProvider == null)
                 return Request.CreateResponse(HttpStatusCode.Unauthorized);
 
-            //поиск предмета
-            FlowSubject fSubject = await FlowSubject.GetInstanceAsync(subjectFlowId);
-            if (fSubject == null)
-                return Request.CreateResponse(HttpStatusCode.BadRequest);
+            //проверка наличия записи о регистрации
+            StudentFlowSubject student = await StudentFlowSubject.GetInstanceAsync(studentFlowId);
+            if (student == null)
+                return Request.CreateResponse(HttpStatusCode.NotFound);
 
             var exLabs = await ExecutedPractWork.GetCollectionAsync(studentFlowId);
-            exLabs = exLabs.FindAll(x =>
-            {
-                LabWorkPlan plan = (LabWorkPlan.GetInstanceAsync(x.PlanId)).Result;
-                return plan.FlowSubjectId == fSubject.ID;
-            });
 
             response.Data = exLabs;
             if (exLabs.Count > 0)
@@ -261,7 +258,6 @@ namespace ElJournal.Controllers
         }
 
 
-        // POST: api/PracticeWork
         // добавить практическую работу (преподаватель, администратор)
         [HttpPost]
         [Route("api/PracticeWork")]
@@ -295,7 +291,7 @@ namespace ElJournal.Controllers
 
         // добавить файл к практической работе (автор, администратор)
         [HttpPost]
-        [Route("api/PracticeWork/file")]
+        [Route("api/PracticeWork/file/{id}")]
         public async Task<HttpResponseMessage> Post(string id)
         {
             //идентификация пользователя
@@ -333,7 +329,6 @@ namespace ElJournal.Controllers
         }
 
 
-        // PUT: api/PracticeWork/5
         // изменить практическую работу (автор, администратор)
         public async Task<HttpResponseMessage> Put(string id, [FromBody]PracticeWork work)
         {
@@ -433,7 +428,7 @@ namespace ElJournal.Controllers
         }
 
 
-        // DELETE: api/PracticeWork/5
+        // удалить практическую работу (администратор)
         [HttpDelete]
         [Route("api/PracticeWork/{id}")]
         public async Task<HttpResponseMessage> Delete(string id)
@@ -463,7 +458,7 @@ namespace ElJournal.Controllers
 
         // удалить файл из практической работы (автор, администратор)
         [HttpDelete]
-        [Route("api/PracticeWork/file")]
+        [Route("api/PracticeWork/file/{id}")]
         public async Task<HttpResponseMessage> DeleteFile(string id)
         {
             //идентификация пользователя
