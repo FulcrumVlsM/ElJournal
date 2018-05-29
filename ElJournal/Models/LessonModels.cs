@@ -110,13 +110,12 @@ namespace ElJournal.Models
         /// Возвращает полный список занятий, на которых присутствовал студент
         /// </summary>
         /// <returns></returns>
-        public static async Task<List<Lesson>> GetCollectionAsync(string flowSubjectId, string studentId)
+        public static async Task<List<Lesson>> GetAttemptCollectionAsync(string studentFlowSubjectId)
         {
-            string sqlQuery = "select * from dbo.GetLessonsOfStudent(@studentId,@subjectId)";
+            string sqlQuery = "select * from dbo.GetLessonsOfStudent(@studentId)";
             var parameters = new Dictionary<string, string>
             {
-                { "@subjectId", flowSubjectId },
-                { "@studentId", studentId }
+                { "@studentId", studentFlowSubjectId }
             };
             try
             {

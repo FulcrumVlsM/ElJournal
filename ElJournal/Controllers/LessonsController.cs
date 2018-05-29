@@ -88,11 +88,11 @@ namespace ElJournal.Controllers
 
         // получить посещенные занятия студентом по предмету (все рег. пользователи)
         [HttpGet]
-        [Route("api/Lesson/attend/{flowSubjectId}/{studentId}")]
-        public async Task<HttpResponseMessage> GetPresence(string flowSubjectId, string studentId)
+        [Route("api/Lesson/attend/{studentFlowSubjectId}")]
+        public async Task<HttpResponseMessage> GetPresence(string studentFlowSubjectId)
         {
             Response response = new Response();
-            var lessons = await Lesson.GetCollectionAsync(flowSubjectId, studentId);
+            var lessons = await Lesson.GetAttemptCollectionAsync(studentFlowSubjectId);
             response.Data = lessons;
             return Request.CreateResponse(HttpStatusCode.OK, response);
         }
@@ -130,8 +130,8 @@ namespace ElJournal.Controllers
 
         // отметить студента на занятии (преподаватель, администратор)
         [HttpPost]
-        [Route("api/Lesson/attend/{lessonId}/{studentId}")]
-        public async Task<HttpResponseMessage> PostAttend(string lessonId, string studentId)
+        [Route("api/Lesson/attend/{lessonId}/{studentFlowSubjectId}")]
+        public async Task<HttpResponseMessage> PostAttend(string lessonId, string studentFlowSubjectId)
         {
             //идентификация пользователя
             string token = Request?.Headers?.Authorization?.Scheme;
@@ -141,7 +141,7 @@ namespace ElJournal.Controllers
 
             //поиск занятия и студента
             LessonAttend lesson = (LessonAttend)(await Lesson.GetInstanceAsync(lessonId));
-            StudentFlowSubject student = await StudentFlowSubject.GetInstanceAsync(studentId);
+            StudentFlowSubject student = await StudentFlowSubject.GetInstanceAsync(studentFlowSubjectId);
             if (lesson == null || student == null)
                 return Request.CreateResponse(HttpStatusCode.BadRequest);
 
