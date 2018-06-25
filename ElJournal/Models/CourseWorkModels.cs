@@ -284,7 +284,7 @@ namespace ElJournal.Models
         public string ID { get; set; }
         public string Name { get; set; }
         public string Info { get; set; }
-        public string SubjectGroupSemesterId { get; set; }
+        public string FlowSubjectId { get; set; }
 
         /// <summary>
         /// Возвращает этап (процентовку) курсовой работу по указанному ID
@@ -298,19 +298,28 @@ namespace ElJournal.Models
             {
                 { "@id", id }
             };
-            DB db = DB.GetInstance();
-            var result = await db.ExecSelectQuerySingleAsync(sqlQuery, parameters);
+            try
+            {
+                DB db = DB.GetInstance();
+                var result = await db.ExecSelectQuerySingleAsync(sqlQuery, parameters);
 
-            if (result.Count > 0)
-                return new CourseWorkStage
-                {
-                    ID = result.ContainsKey("ID") ? result["ID"].ToString() : string.Empty,
-                    Name = result.ContainsKey("name") ? result["name"].ToString() : string.Empty,
-                    Info = result.ContainsKey("info") ? result["info"].ToString() : string.Empty,
-                    SubjectGroupSemesterId = result.ContainsKey("SubjectGroupSemesterID") ? result["SubjectGroupSemesterID"] : string.Empty
-                };
-            else
+                if (result.Count > 0)
+                    return new CourseWorkStage
+                    {
+                        ID = result.ContainsKey("ID") ? result["ID"].ToString() : string.Empty,
+                        Name = result.ContainsKey("name") ? result["name"].ToString() : string.Empty,
+                        Info = result.ContainsKey("info") ? result["info"].ToString() : string.Empty,
+                        FlowSubjectId = result.ContainsKey("FlowSubjectID") ? result["FlowSubjectID"] : string.Empty
+                    };
+                else
+                    return null;
+            }
+            catch(Exception e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Fatal(e.ToString());//запись лога с ошибкой
                 return null;
+            }
         }
 
         /// <summary>
@@ -320,21 +329,19 @@ namespace ElJournal.Models
         public static async Task<List<CourseWorkStage>> GetCollectionAsync()
         {
             string sqlQuery = "select * from CourseWorkStages";
-            DB db = DB.GetInstance();
-            var result = await db.ExecSelectQueryAsync(sqlQuery);
-            var labWorks = new List<CourseWorkStage>(result.Count);
-            foreach (var obj in result)
+            try
             {
-                labWorks.Add(new CourseWorkStage
-                {
-                    ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : string.Empty,
-                    Name = obj.ContainsKey("name") ? obj["name"].ToString() : string.Empty,
-                    Info = obj.ContainsKey("info") ? obj["info"].ToString() : string.Empty,
-                    SubjectGroupSemesterId = obj.ContainsKey("SubjectGroupSemesterID") ? obj["SubjectGroupSemesterID"] : string.Empty
-                });
+                DB db = DB.GetInstance();
+                var result = await db.ExecSelectQueryAsync(sqlQuery);
+                var labWorks = ToCourseWorkStages(result);
+                return labWorks;
             }
-
-            return labWorks;
+            catch(Exception e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Fatal(e.ToString());//запись лога с ошибкой
+                return new List<CourseWorkStage>();
+            }
         }
 
         /// <summary>
@@ -352,7 +359,7 @@ namespace ElJournal.Models
                     ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : string.Empty,
                     Name = obj.ContainsKey("name") ? obj["name"].ToString() : string.Empty,
                     Info = obj.ContainsKey("info") ? obj["info"].ToString() : string.Empty,
-                    SubjectGroupSemesterId = obj.ContainsKey("SubjectGroupSemesterID") ? obj["SubjectGroupSemesterID"] : string.Empty
+                    FlowSubjectId = obj.ContainsKey("FlowSubjectID") ? obj["FlowSubjectID"] : string.Empty
                 });
             }
 
@@ -367,7 +374,34 @@ namespace ElJournal.Models
         public static async Task<List<CourseWorkStage>> GetCWorkStagesFromSubject(string subjectId)
         {
             var stages = await GetCollectionAsync();
-            return stages.FindAll(x => x.SubjectGroupSemesterId.Equals(subjectId));
+            return stages.FindAll(x => x.FlowSubjectId == subjectId);
+        }
+
+        /// <summary>
+        /// Получает список процентовок, выполненных студентом
+        /// </summary>
+        /// <param name="executionId">id записи о выполнении курсовой работы</param>
+        /// <returns></returns>
+        public static async Task<List<CourseWorkStage>> GetExecuted(string executionId)
+        {
+            string sqlQuery = "select ID,FlowSubjectID,name from ExecutedCourseWorkStages(@executionId)";
+            var parameters = new Dictionary<string, string>
+            {
+                { "@executionid", executionId }
+            };
+            try
+            {
+                DB db = DB.GetInstance();
+                var exec = await db.ExecSelectQueryAsync(sqlQuery, parameters);//получение данных из БД
+                var result = ToCourseWorkStages(exec);
+                return result;
+            }
+            catch(Exception e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Fatal(e.ToString());//запись лога с ошибкой
+                return new List<CourseWorkStage>();
+            }
         }
 
         /// <summary>
@@ -377,13 +411,24 @@ namespace ElJournal.Models
         /// <returns>True, если объект был добавлен в БД</returns>
         public async Task<bool> Push()
         {
-            var parameters = new Dictionary<string, string>();
             string procName = "dbo.AddCourseWorkStage";
-            parameters.Add("@name", Name);
-            parameters.Add("@info", Info);
-            parameters.Add("@subjectId", SubjectGroupSemesterId);
-            DB db = DB.GetInstance();
-            return Convert.ToBoolean(await db.ExecStoredProcedureAsync(procName, parameters));
+            var parameters = new Dictionary<string, string>
+            {
+                { "@name", Name },
+                { "@info", Info },
+                { "@subjectId", FlowSubjectId }
+            };
+            try
+            {
+                DB db = DB.GetInstance();
+                return Convert.ToBoolean(await db.ExecStoredProcedureAsync(procName, parameters));
+            }
+            catch(Exception e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Fatal(e.ToString());//запись лога с ошибкой
+                return false;
+            }
         }
 
         /// <summary>
@@ -393,12 +438,23 @@ namespace ElJournal.Models
         public async Task<bool> Update()
         {
             string procName = "dbo.UpdateCourseWorkStage";
-            var parameters = new Dictionary<string, string>();
-            DB db = DB.GetInstance();
-            parameters.Add("@ID", ID);
-            parameters.Add("@name", Name);
-            parameters.Add("@info", Info);
-            return Convert.ToBoolean(await db.ExecStoredProcedureAsync(procName, parameters));
+            var parameters = new Dictionary<string, string>
+            {
+                { "@ID", ID },
+                { "@name", Name },
+                { "@info", Info }
+            };
+            try
+            {
+                DB db = DB.GetInstance();
+                return Convert.ToBoolean(await db.ExecStoredProcedureAsync(procName, parameters));
+            }
+            catch(Exception e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Fatal(e.ToString());//запись лога с ошибкой
+                return false;
+            }
         }
 
         /// <summary>
@@ -412,15 +468,24 @@ namespace ElJournal.Models
             {
                 { "@ID", ID }
             };
-            DB db = DB.GetInstance();
-            int result = db.ExecInsOrDelQuery(sqlQuery, parameters);
-            if (result == 1)
+            try
             {
-                ID = null;
-                return true;
+                DB db = DB.GetInstance();
+                int result = db.ExecInsOrDelQuery(sqlQuery, parameters);
+                if (result == 1)
+                {
+                    ID = null;
+                    return true;
+                }
+                else
+                    return false;
             }
-            else
+            catch(Exception e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Fatal(e.ToString());//запись лога с ошибкой
                 return false;
+            }
         }
     }
 
@@ -445,23 +510,32 @@ namespace ElJournal.Models
             {
                 { "@studentId", studentID }
             };
-            DB db = DB.GetInstance();
-            var result = await db.ExecSelectQuerySingleAsync(sqlQuery, parameters);
-            if (result != null)
+            try
             {
-                var work = new CourseWorkExecution
+                DB db = DB.GetInstance();
+                var result = await db.ExecSelectQuerySingleAsync(sqlQuery, parameters);
+                if (result != null)
                 {
-                    ID = result.ContainsKey("ID") ? result["ID"].ToString() : string.Empty,
-                    Info = result.ContainsKey("info") ? result["info"].ToString() : string.Empty,
-                    Date = result.ContainsKey("date") ? result["date"] : string.Empty,
-                    State = result.ContainsKey("state") ? result["state"].ToString() : string.Empty
-                };
-                work.CWork = result.ContainsKey("CourseWorkPlanID") ?
-                    CourseWork.GetCWorkFromPlan(result["CourseWorkPlanID"].ToString()) : null;
-                return work;
+                    var work = new CourseWorkExecution
+                    {
+                        ID = result.ContainsKey("ID") ? result["ID"].ToString() : string.Empty,
+                        Info = result.ContainsKey("info") ? result["info"].ToString() : string.Empty,
+                        Date = result.ContainsKey("date") ? result["date"] : string.Empty,
+                        State = result.ContainsKey("state") ? result["state"].ToString() : string.Empty
+                    };
+                    work.CWork = result.ContainsKey("CourseWorkPlanID") ?
+                        CourseWork.GetCWorkFromPlan(result["CourseWorkPlanID"].ToString()) : null;
+                    return work;
+                }
+                else
+                    return null;
             }
-            else
+            catch(Exception e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Fatal(e.ToString());//запись лога с ошибкой
                 return null;
+            }
         }
 
         /// <summary>
@@ -471,26 +545,40 @@ namespace ElJournal.Models
         public async Task<bool> Update()
         {
             string procName = "dbo.UpdateCourseWorkExecution";
-            var parameters = new Dictionary<string, string>();
-            DB db = DB.GetInstance();
-            parameters.Add("@ID", ID);
-            parameters.Add("@info", Info);
-            parameters.Add("@state", Convert.ToInt16(State).ToString());
-            return Convert.ToBoolean(await db.ExecStoredProcedureAsync(procName, parameters));
+            var parameters = new Dictionary<string, string>
+            {
+                { "@ID", ID },
+                { "@info", Info },
+                { "@state", Convert.ToInt16(State).ToString() }
+            };
+            try
+            {
+                DB db = DB.GetInstance();
+                return Convert.ToBoolean(await db.ExecStoredProcedureAsync(procName, parameters));
+            }
+            catch(Exception e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Fatal(e.ToString());//запись лога с ошибкой
+                return false;
+            }
         }
     }
 
 
-    public class CourseWorkStageExecution : CourseWorkStage
+    public class CourseWorkStageExecution
     {
-        DateTime Date { get; set; }
+        public string ID { get; set; }
+        public DateTime Date { get; set; }
+        public string CourseWorkStageId { get; set; }
+        public string CourseWorkExecutionId { get; set; }
 
         /// <summary>
         /// Производит преобразование коллекции, полученной методами класса DB в коллекцию моделей
         /// </summary>
         /// <param name="stages"></param>
         /// <returns></returns>
-        public new static List<CourseWorkStageExecution> ToCourseWorkStages(List<Dictionary<string, dynamic>> stages)
+        public static List<CourseWorkStageExecution> ToCourseWorkStages(List<Dictionary<string, dynamic>> stages)
         {
             var labWorks = new List<CourseWorkStageExecution>(stages.Count);
             foreach (var obj in stages)
@@ -498,14 +586,69 @@ namespace ElJournal.Models
                 labWorks.Add(new CourseWorkStageExecution
                 {
                     ID = obj.ContainsKey("ID") ? obj["ID"].ToString() : string.Empty,
-                    Name = obj.ContainsKey("name") ? obj["name"].ToString() : string.Empty,
-                    Info = obj.ContainsKey("info") ? obj["info"].ToString() : string.Empty,
-                    SubjectGroupSemesterId = obj.ContainsKey("SubjectGroupSemesterID") ? obj["SubjectGroupSemesterID"] : string.Empty,
+                    CourseWorkStageId = obj.ContainsKey("CWStageID") ? obj["CWStageID"].ToString() : string.Empty,
+                    CourseWorkExecutionId = obj.ContainsKey("CWExecutionID") ? obj["CWExecutionID"] : string.Empty,
                     Date = obj.ContainsKey("date") ? obj["date"] : default(DateTime)
                 });
             }
 
             return labWorks;
+        }
+
+        /// <summary>
+        /// Производит добавление отметки о выполнени этапа процентовки в БД
+        /// </summary>
+        /// <returns></returns>
+        public async Task<bool> Push()
+        {
+            string procName = "dbo.AddCWorkStageExecution";
+            var parameters = new Dictionary<string, string>
+            {
+                { "@CWExecutionId", CourseWorkExecutionId },
+                { "@stageId", CourseWorkStageId }
+            };
+
+            try
+            {
+                DB db = DB.GetInstance();
+                return Convert.ToBoolean(await db.ExecStoredProcedureAsync(procName, parameters));
+            }
+            catch(Exception e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Fatal(e.ToString());//запись лога с ошибкой
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Производит удаление отметки о выполнении этапа процентовки из БД
+        /// </summary>
+        /// <returns></returns>
+        public bool Delete()
+        {
+            string sqlQuery = "delete from CourseWorkStagesExecution where CWStageID=@stageId and CWExecutionID=@executionId";
+            var parameters = new Dictionary<string, string>
+            {
+                { "@stageId", CourseWorkStageId },
+                { "@executionId", CourseWorkExecutionId }
+            };
+
+            try
+            {
+                DB db = DB.GetInstance();
+                int count = db.ExecInsOrDelQuery(sqlQuery, parameters);
+                if (count == 1)
+                    return true;
+                else
+                    return false;
+            }
+            catch(Exception e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Fatal(e.ToString());//запись лога с ошибкой
+                return false;
+            }
         }
     }
 }

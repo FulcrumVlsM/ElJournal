@@ -218,7 +218,7 @@ namespace ElJournal.Models
                         WeekDay = obj.ContainsKey("DayOfWeek") ? Convert.ToInt32(obj["DayOfWeek"].ToString()) : null,
                         StartTime = obj.ContainsKey("StartTime") ? obj["StartTime"].ToString() : null,
                         EndTime = obj.ContainsKey("EndTime") ? obj["EndTime"].ToString() : null,
-                        Name = obj.ContainsKey("name") ? DateTime.Parse(obj["name"]) : null
+                        Name = obj.ContainsKey("name") ? obj["name"].ToString() : null
                     });
                 }
                 return times;
