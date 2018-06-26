@@ -35,21 +35,30 @@ namespace ElJournal.Models
             string sqlQuery = "select * from CourseWorks where ID=@id";
             var parameters = new Dictionary<string, string>();
             parameters.Add("@id", id);
-            DB db = DB.GetInstance();
-            var result = await db.ExecSelectQuerySingleAsync(sqlQuery, parameters);
-            if (result != null)
-                return new CourseWork
-                {
-                    ID = result.ContainsKey("ID") ? result["ID"].ToString() : string.Empty,
-                    AuthorId = result.ContainsKey("authorID") ? result["authorID"].ToString() : string.Empty,
-                    Name = result.ContainsKey("name") ? result["name"].ToString() : string.Empty,
-                    FileName = result.ContainsKey("fileName") ? result["fileName"].ToString() : string.Empty,
-                    FileURL = result.ContainsKey("fileURL") ? result["fileURL"].ToString() : string.Empty,
-                    Advanced = result.ContainsKey("advanced") ? result["advanced"].ToString() : string.Empty,
-                    Description = result.ContainsKey("description") ? result["description"].ToString() : string.Empty
-                };
-            else
+            try
+            {
+                DB db = DB.GetInstance();
+                var result = await db.ExecSelectQuerySingleAsync(sqlQuery, parameters);
+                if (result != null)
+                    return new CourseWork
+                    {
+                        ID = result.ContainsKey("ID") ? result["ID"].ToString() : string.Empty,
+                        AuthorId = result.ContainsKey("authorID") ? result["authorID"].ToString() : string.Empty,
+                        Name = result.ContainsKey("name") ? result["name"].ToString() : string.Empty,
+                        FileName = result.ContainsKey("fileName") ? result["fileName"].ToString() : string.Empty,
+                        FileURL = result.ContainsKey("fileURL") ? result["fileURL"].ToString() : string.Empty,
+                        Advanced = result.ContainsKey("advanced") ? result["advanced"].ToString() : string.Empty,
+                        Description = result.ContainsKey("description") ? result["description"].ToString() : string.Empty
+                    };
+                else
+                    return null;
+            }
+            catch(Exception e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Fatal(e.ToString());//запись лога с ошибкой
                 return null;
+            }
         }
 
 
@@ -90,7 +99,7 @@ namespace ElJournal.Models
             try
             {
                 DB db = DB.GetInstance();
-                var result = await db.ExecSelectQueryAsync(sqlQuery);
+                var result = await db.ExecSelectQueryAsync(sqlQuery, parameters);
                 return ToCourseWork(result);
             }
             catch(Exception e)
@@ -167,8 +176,17 @@ namespace ElJournal.Models
                 { "@description", Description },
                 { "@authorId", authorId }
             };
-            DB db = DB.GetInstance();
-            return Convert.ToBoolean(await db.ExecStoredProcedureAsync(procName, parameters));
+            try
+            {
+                DB db = DB.GetInstance();
+                return Convert.ToBoolean(await db.ExecStoredProcedureAsync(procName, parameters));
+            }
+            catch(Exception e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Fatal(e.ToString());
+                return false;
+            }
         }
 
         /// <summary>
@@ -252,8 +270,17 @@ namespace ElJournal.Models
                 { "@advanced", Advanced },
                 { "@description", Description }
             };
-            DB db = DB.GetInstance();
-            return Convert.ToBoolean(await db.ExecStoredProcedureAsync(procName, parameters));
+            try
+            {
+                DB db = DB.GetInstance();
+                return Convert.ToBoolean(await db.ExecStoredProcedureAsync(procName, parameters));
+            }
+            catch(Exception e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Fatal(e.ToString());
+                return false;
+            }
         }
 
         /// <summary>
@@ -267,15 +294,24 @@ namespace ElJournal.Models
             {
                 { "@ID", ID }
             };
-            DB db = DB.GetInstance();
-            int result = db.ExecInsOrDelQuery(sqlQuery, parameters);
-            if (result == 1)
+            try
             {
-                ID = null;
-                return true;
+                DB db = DB.GetInstance();
+                int result = db.ExecInsOrDelQuery(sqlQuery, parameters);
+                if (result == 1)
+                {
+                    ID = null;
+                    return true;
+                }
+                else
+                    return false;
             }
-            else
+            catch(Exception e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Fatal(e.ToString());
                 return false;
+            }
         }
     }
 
@@ -493,7 +529,7 @@ namespace ElJournal.Models
     {
         public string ID { get; set; }
         public string Info { get; set; }
-        public DateTime Date { get; set; }
+        public string Date { get; set; }
         public bool State { get; set; }
         public CourseWork CWork { get; set; }
 
@@ -521,7 +557,7 @@ namespace ElJournal.Models
                         ID = result.ContainsKey("ID") ? result["ID"].ToString() : string.Empty,
                         Info = result.ContainsKey("info") ? result["info"].ToString() : string.Empty,
                         Date = result.ContainsKey("date") ? result["date"] : string.Empty,
-                        State = result.ContainsKey("state") ? result["state"].ToString() : string.Empty
+                        State = result.ContainsKey("state") ? Convert.ToBoolean(result["state"].ToString()) : false
                     };
                     work.CWork = result.ContainsKey("CourseWorkPlanID") ?
                         CourseWork.GetCWorkFromPlan(result["CourseWorkPlanID"].ToString()) : null;

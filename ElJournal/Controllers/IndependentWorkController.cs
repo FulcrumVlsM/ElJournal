@@ -64,7 +64,7 @@ namespace ElJournal.Controllers
 
         // POST: api/IndependentWork
         // добавить самостоятельную работу (преподаватель, администратор)
-        public async Task<dynamic> Post([FromBody]IndependentWorkModels independentWork)
+        public async Task<dynamic> Post([FromBody]IndependentWork independentWork)
         {
             return null;
         }
@@ -102,7 +102,7 @@ namespace ElJournal.Controllers
 
         // PUT: api/IndependentWork/5
         // изменить самостоятельную работу (автор, администратор)
-        public async Task<dynamic> Put(string id, [FromBody]IndependentWorkModels independentWork)
+        public async Task<dynamic> Put(string id, [FromBody]IndependentWork independentWork)
         {
             return null;
         }
