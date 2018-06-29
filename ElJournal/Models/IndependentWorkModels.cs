@@ -1,4 +1,5 @@
 ﻿using ElJournal.DBInteract;
+using Newtonsoft.Json;
 using NLog;
 using System;
 using System.Collections.Generic;
@@ -15,7 +16,9 @@ namespace ElJournal.Models
     {
         public string ID { get; set; }
         public string Name { get; set; }
+        [JsonIgnore]
         public string FileName { get; set; }
+        [JsonIgnore]
         public string FileURL { get; set; }
         public string Description { get; set; }
         public string Advanced { get; set; }
@@ -136,7 +139,7 @@ namespace ElJournal.Models
         /// </summary>
         /// <param name="authorId">автор</param>
         /// <returns>True, если объект был добавлен в БД</returns>
-        public async Task<bool> Push(string authorId)
+        public virtual async Task<bool> Push(string authorId)
         {
             string procName = "dbo.AddIndependentWork";
             var parameters = new Dictionary<string, string>
@@ -257,7 +260,7 @@ namespace ElJournal.Models
         /// Удаление текущего объекта из БД
         /// </summary>
         /// <returns></returns>
-        public bool Delete()
+        public virtual bool Delete()
         {
             string sqlQuery = "delete from IndependentWorks where ID=@ID";
             var parameters = new Dictionary<string, string>
@@ -289,6 +292,7 @@ namespace ElJournal.Models
     public class IndependentWorkPlan : IndependentWork
     {
         public string IndependentWorkPlanId { get; set; }
+        public string FlowSubjectId { get; set; }
 
 
         /// <summary>
@@ -385,6 +389,58 @@ namespace ElJournal.Models
 
             return indWorks;
         }
+
+        public async Task<bool> Push()
+        {
+            string sqlQuery = "insert into IndependentWorksPlan(IndependentWorkID,FlowSubjectID) values " +
+                "(@workId, @flowSubjectId)";
+            var parameters = new Dictionary<string, string>
+            {
+                { "@workId", ID },
+                { "@flowSubjectId",  FlowSubjectId }
+            };
+
+            try
+            {
+                DB db = DB.GetInstance();
+                int result = await db.ExecInsOrDelQueryAsync(sqlQuery, parameters);
+                if (result == 1)
+                    return true;
+                else
+                    return false;
+            }
+            catch(Exception e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Fatal(e.ToString());
+                return false;
+            }
+        }
+
+        public override bool Delete()
+        {
+            string sqlQuery = "delete from IndependentWorksPlan where ID=@id";
+            var parameters = new Dictionary<string, string>
+            {
+                { "@id", IndependentWorkPlanId }
+            };
+
+            try
+            {
+                DB db = DB.GetInstance();
+                int result = db.ExecInsOrDelQuery(sqlQuery, parameters);
+                if (result == 1)
+                    return true;
+                else
+                    return false;
+            }
+            catch(Exception e)
+            {
+                Logger logger = LogManager.GetCurrentClassLogger();
+                logger.Fatal(e.ToString());
+                return false;
+            }
+        }
     }
 
     public class IndependentWorkExecution
@@ -431,7 +487,7 @@ namespace ElJournal.Models
             }
         }
 
-        public async Task<bool> Push(string studentFlowSubjectId)
+        public async Task<bool> Push()
         {
             string procName = "dbo.AddIndependentWorkExecution";
             var parameters = new Dictionary<string, string>

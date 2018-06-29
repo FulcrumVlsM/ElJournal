@@ -64,7 +64,7 @@ namespace ElJournal.Controllers
                 return Request.CreateResponse(HttpStatusCode.Unauthorized);
 
             var works = await CourseWork.GetCollectionAsync();
-            if (!string.IsNullOrEmpty(name)) // если шаблон для поиска не задавался
+            if (!string.IsNullOrEmpty(name)) // если шаблон для поиска задавался
             {
                 Regex regex = new Regex(name);
                 works = works.FindAll(x => regex.IsMatch(x.Name) || regex.IsMatch(x.Advanced));
@@ -165,7 +165,6 @@ namespace ElJournal.Controllers
         public async Task<HttpResponseMessage> GetBySubj(string flowSubjectId)
         {
             Response response = new Response();
-            //TODO: я остановился здесь
             string sqlQuery = "select * from dbo.PlannedCourseWorks(@subjectId)";
             var parameters = new Dictionary<string, string>
             {

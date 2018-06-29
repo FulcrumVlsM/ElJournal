@@ -186,6 +186,27 @@ namespace ElJournal.Providers
         }
 
         /// <summary>
+        /// Список самостоятельных работ, автором которых является пользователь
+        /// </summary>
+        public List<string> IndependentWorks
+        {
+            get
+            {
+                DB db = DB.GetInstance();
+                string sqlQuery = " select ID from dbo.GetIndependentWorksOfTheAuthor(@personId)";
+                var parameters = new Dictionary<string, string>
+                {
+                    { "@personId", PersonId }
+                };
+                var list = db.ExecSelectQueryAsync(sqlQuery, parameters).Result;
+                var works = new List<string>();
+                foreach (var item in list)
+                    works.Add(item["ID"]);
+                return works;
+            }
+        }
+
+        /// <summary>
         /// Токен пользователя
         /// </summary>
         public string Token
