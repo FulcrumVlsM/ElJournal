@@ -197,7 +197,7 @@ namespace ElJournal.Controllers
                 }
                 else //если нужно удалить существующий факт сдачи
                 {
-                    if (cwExecution.Delete)
+                    if (cwExecution.Delete())
                         return Request.CreateResponse(HttpStatusCode.OK);
                     else
                         return Request.CreateResponse(HttpStatusCode.Conflict);
